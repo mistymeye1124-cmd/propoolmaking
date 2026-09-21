@@ -908,7 +908,7 @@ async def run_tests():
         style="custom_tg:5468383120:💎"
     )
     assert custom_id == "5468383120"
-    assert "💎" in icon_str
+    assert icon_str == ""  # Strictly empty so no duplicate emojis appear alongside custom emoji
 
     # 4. build_poll_keyboard with custom_tg style and candidate custom emoji
     cand_list = [

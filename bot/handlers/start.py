@@ -619,12 +619,15 @@ async def process_custom_icon(message: Message, state: FSMContext):
                 custom_name = rest_name[:30].strip()
 
     if custom_emoji_id:
-        if not custom_name:
-            custom_name = f"Custom {custom_emoji_id[-6:]}"
-        # Save to user's saved custom emojis table!
-        await add_user_saved_emoji(user_id, custom_emoji_id, name=custom_name, fallback_char=fallback_char)
-        custom_val = f"custom_tg:{custom_emoji_id}:{fallback_char}"
-        display_name = f'<tg-emoji emoji-id="{custom_emoji_id}">{fallback_char}</tg-emoji> <b>{html.escape(custom_name)}</b>\n🆔 <b>Emoji Code:</b> <code>{custom_emoji_id}</code>'
+        from bot.keyboards.inline import strip_all_emojis
+        clean_custom_name = strip_all_emojis(custom_name).strip() if custom_name else ""
+        if not clean_custom_name:
+            clean_custom_name = f"Custom {custom_emoji_id[-6:]}"
+
+        # Save to user's saved custom emojis table (clean name without duplicate emojis)
+        await add_user_saved_emoji(user_id, custom_emoji_id, name=clean_custom_name, fallback_char="")
+        custom_val = f"custom_tg:{custom_emoji_id}"
+        display_name = f'<tg-emoji emoji-id="{custom_emoji_id}">✨</tg-emoji> <b>{html.escape(clean_custom_name)}</b>\n🆔 <b>Emoji Code:</b> <code>{custom_emoji_id}</code>'
     else:
         clean_icon = raw_text[:10].strip() or "🗳️"
         custom_val = f"custom:{clean_icon}"
