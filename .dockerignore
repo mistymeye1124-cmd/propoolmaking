@@ -1,0 +1,35 @@
+# Git & Version Control
+.git/
+.gitignore
+
+# Virtual Environments & Caches
+venv/
+env/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment secrets
+.env
+.env.*
+
+# Local Databases (volume mounted on host)
+*.sqlite3*
+*.db*
+*.sqlite
+
+# Logs
+*.log
+logs/
+
+# Tests & Development artifacts
+scratch/
+tests/
+test_system.py
+check_status.py
+*.bat
+.pytest_cache/
+.vscode/
+.idea/

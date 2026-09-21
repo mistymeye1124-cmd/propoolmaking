@@ -1,0 +1,32 @@
+[Unit]
+Description=Telegram Poll Bot Service
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# VPS user (change 'root' if you created a dedicated user e.g. ubuntu or debian)
+User=root
+WorkingDirectory=/var/www/telegram-poll-bot
+
+# Path to python in virtual environment
+ExecStart=/var/www/telegram-poll-bot/venv/bin/python main.py
+
+# Restart policy on failure
+Restart=always
+RestartSec=5
+
+# Environment variables
+EnvironmentFile=/var/www/telegram-poll-bot/.env
+Environment=PYTHONUNBUFFERED=1
+
+# Process management
+KillMode=process
+TimeoutStopSec=15
+
+# Logging to bot.log
+StandardOutput=append:/var/www/telegram-poll-bot/bot.log
+StandardError=append:/var/www/telegram-poll-bot/bot.log
+
+[Install]
+WantedBy=multi-user.target

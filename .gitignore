@@ -1,0 +1,70 @@
+# ==============================================================================
+# Telegram Poll Bot - Git Ignore Configuration
+# ==============================================================================
+
+# --- Secrets & Environment Variables (CRITICAL: Never commit to Git) ---
+.env
+.env.*
+!.env.example
+
+# --- Python Bytecode & Cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# --- Virtual Environments ---
+venv/
+env/
+ENV/
+.venv/
+env.bak/
+venv.bak/
+
+# --- Database & Journal Files ---
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+bot_database.sqlite3
+bot.db
+poll_bot.db
+test_*.sqlite3
+
+# --- Log Files ---
+*.log
+bot.log*
+logs/
+
+# --- Distribution / Packaging ---
+build/
+dist/
+*.egg-info/
+*.egg
+wheels/
+
+# --- Testing & Scratch ---
+scratch/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- IDE & Editor Files ---
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+
+# --- Operating System Files ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db

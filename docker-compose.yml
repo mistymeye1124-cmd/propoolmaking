@@ -1,0 +1,16 @@
+services:
+  telegram-poll-bot:
+    build: .
+    container_name: telegram_poll_bot
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      # Persist SQLite database & logs on the VPS host
+      - ./bot_database.sqlite3:/app/bot_database.sqlite3
+      - ./bot.log:/app/bot.log
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
