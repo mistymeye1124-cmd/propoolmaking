@@ -53,6 +53,8 @@ def get_candidate_icon(
             else:
                 return "🔥 "
         return "🗳️ "
+    elif style in EMOJI_ID_TO_ICON:
+        return f"{EMOJI_ID_TO_ICON[style]} "
     elif style == "ballot":
         return "🗳️ "
     elif style == "diamond":
@@ -81,11 +83,16 @@ def get_candidate_icon(
         return "🟢 "
     elif style.startswith("custom_tg:"):
         parts = style.split(":")
-        fallback = parts[2] if len(parts) > 2 else "🗳️"
-        return f"{fallback} "
+        emoji_id = parts[1] if len(parts) > 1 else ""
+        if emoji_id in EMOJI_ID_TO_ICON:
+            return f"{EMOJI_ID_TO_ICON[emoji_id]} "
+        fallback = parts[2] if len(parts) > 2 and parts[2] and parts[2] not in ("main", "admin") else ""
+        if fallback:
+            return f"{fallback} "
+        return "✨ "
     elif style.startswith("custom:"):
         custom_icon = style[7:].strip()
-        return f"{custom_icon} "
+        return f"{custom_icon} " if custom_icon else "✨ "
     elif style == "profile":
         return "👤 "
     else:
@@ -117,23 +124,24 @@ def strip_all_emojis(text: str) -> str:
     return cleaned if cleaned else text.strip()
 
 STYLE_PRESETS = [
-    ("dynamic", "Dynamic Leader", "6235252066554484059"),
-    ("diamond", "VIP Diamond", "6271494293383286950"),
-    ("zap", "Lightning Zap", "6271459718896554468"),
-    ("star", "Golden Star", "6181535395914718008"),
-    ("radio", "Radio Circle", "5348084369217052513"),
-    ("rocket", "Rocket Speed", "5445118546700954082"),
-    ("shield", "Verified Shield", "5465154440287757794"),
-    ("ballot", "Ballot Box", "5837134496868077492"),
-    ("sparkle", "Modern Sparkle", "6179411633371095707"),
-    ("fire", "Fire Trend", "5136918320674505825"),
-    ("target", "Bullseye Target", "5310278924616356636"),
-    ("sleek", "Sleek Rhombus", "5393383127294953991"),
-    ("trophy", "Champion Trophy", "5226431245918942763"),
-    ("neon", "Neon Dot", "5395542928909150340"),
+    ("dynamic", "Dynamic Leader", "6235252066554484059", "👑"),
+    ("diamond", "VIP Diamond", "6271494293383286950", "💎"),
+    ("zap", "Lightning Zap", "6271459718896554468", "⚡"),
+    ("star", "Golden Star", "6181535395914718008", "⭐"),
+    ("radio", "Radio Circle", "5348084369217052513", "🔘"),
+    ("rocket", "Rocket Speed", "5445118546700954082", "🚀"),
+    ("shield", "Verified Shield", "5465154440287757794", "🔰"),
+    ("ballot", "Ballot Box", "5837134496868077492", "🗳️"),
+    ("sparkle", "Modern Sparkle", "6179411633371095707", "✨"),
+    ("fire", "Fire Trend", "5136918320674505825", "🔥"),
+    ("target", "Bullseye Target", "5310278924616356636", "🎯"),
+    ("sleek", "Sleek Rhombus", "5393383127294953991", "🔹"),
+    ("trophy", "Champion Trophy", "5226431245918942763", "🏆"),
+    ("neon", "Neon Dot", "5395542928909150340", "🟢"),
 ]
 
-STYLE_CUSTOM_EMOJIS = {code: emoji_id for code, _, emoji_id in STYLE_PRESETS}
+STYLE_CUSTOM_EMOJIS = {code: emoji_id for code, _, emoji_id, _ in STYLE_PRESETS}
+EMOJI_ID_TO_ICON = {emoji_id: icon for _, _, emoji_id, icon in STYLE_PRESETS}
 
 def resolve_candidate_icon_and_emoji(
     cand: Dict[str, Any],
@@ -143,9 +151,9 @@ def resolve_candidate_icon_and_emoji(
 ) -> Tuple[str, Optional[str]]:
     """
     Resolves both the display text icon and any Telegram Premium custom emoji ID.
-    When a custom emoji is used, icon_str is strictly empty ("") so that
-    only the custom emoji code is displayed without any duplicate old emojis.
+    Returns: (icon_str, custom_emoji_id_or_none)
     """
+    icon_text = get_candidate_icon(cand, all_candidates, style=style, is_closed=is_closed)
     custom_emoji_id = None
     if style.startswith("custom_tg:"):
         parts = style.split(":")
@@ -153,13 +161,7 @@ def resolve_candidate_icon_and_emoji(
             custom_emoji_id = parts[1]
     elif style in STYLE_CUSTOM_EMOJIS:
         custom_emoji_id = STYLE_CUSTOM_EMOJIS[style]
-
-    # When custom emoji is active, NEVER return any old text emoji!
-    if custom_emoji_id:
-        return "", custom_emoji_id
-
-    icon_text = get_candidate_icon(cand, all_candidates, style=style, is_closed=is_closed)
-    return icon_text, None
+    return icon_text, custom_emoji_id
 
 CREATE_POLL_CUSTOM_EMOJI_ID = "5397916757333654639"
 ADD_CHANNEL_CUSTOM_EMOJI_ID = "6242353099193718277"
@@ -272,11 +274,7 @@ def build_poll_keyboard(
         )
         
         chosen_custom_emoji_id = cand_name_emoji_id or style_emoji_id
-        if chosen_custom_emoji_id:
-            # Custom emoji icon is on the button; omit text emoji so only 1 emoji appears
-            btn_text = f"{clean_name} • {votes}"
-        else:
-            btn_text = f"{icon}{clean_name} • {votes}"
+        btn_text = f"{icon}{clean_name} • {votes}"
         
         if is_closed:
             callback = f"poll_closed:{poll_id}"
@@ -506,9 +504,9 @@ def build_icon_style_keyboard(
     """
     buttons = []
     
-    # 14 Preset styles in 2 columns with rich custom emoji icons (labels without old duplicate emojis)
+    # 14 Preset styles in 2 columns with rich custom emoji icons
     row = []
-    for code, label, emoji_id in STYLE_PRESETS:
+    for code, label, emoji_id, _ in STYLE_PRESETS:
         is_active = (code == current_style)
         prefix = "✅ " if is_active else ""
         btn = make_custom_button(
@@ -531,7 +529,8 @@ def build_icon_style_keyboard(
         )])
         for e in saved_emojis:
             e_id = str(e["emoji_id"])
-            e_code = f"custom_tg:{e_id}"
+            fb = e.get("fallback_char") or EMOJI_ID_TO_ICON.get(e_id, "✨")
+            e_code = f"custom_tg:{e_id}:{fb}"
             is_active = (current_style == e_code or current_style.startswith(f"custom_tg:{e_id}"))
             prefix = "✅ " if is_active else ""
             raw_name = e.get("name") or f"Custom {e_id[-6:]}"

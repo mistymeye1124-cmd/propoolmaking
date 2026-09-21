@@ -521,13 +521,21 @@ async def cb_delete_custom_emoji(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("set_icon_style:"))
 async def cb_set_icon_style(callback: CallbackQuery):
-    parts = callback.data.split(":")
-    # Handling cases where style has colons like custom_tg:ID:FALLBACK
+    from bot.keyboards.inline import EMOJI_ID_TO_ICON
+    # Handling cases where style has colons like custom_tg:ID:FALLBACK:BACK_TO or custom_tg:ID:BACK_TO
     if callback.data.startswith("set_icon_style:custom_tg:"):
         sub_parts = callback.data.split(":")
-        new_style = f"{sub_parts[1]}:{sub_parts[2]}:{sub_parts[3]}"
-        raw_back = sub_parts[4] if len(sub_parts) > 4 else "main"
+        emoji_id = sub_parts[2]
+        if len(sub_parts) >= 5:
+            fallback = sub_parts[3]
+            raw_back = sub_parts[4]
+            new_style = f"custom_tg:{emoji_id}:{fallback}"
+        else:
+            raw_back = sub_parts[3] if len(sub_parts) > 3 else "main"
+            fallback = EMOJI_ID_TO_ICON.get(emoji_id, "✨")
+            new_style = f"custom_tg:{emoji_id}:{fallback}"
     else:
+        parts = callback.data.split(":")
         new_style = parts[1]
         raw_back = parts[2] if len(parts) > 2 else "main"
 
@@ -619,15 +627,16 @@ async def process_custom_icon(message: Message, state: FSMContext):
                 custom_name = rest_name[:30].strip()
 
     if custom_emoji_id:
-        from bot.keyboards.inline import strip_all_emojis
+        from bot.keyboards.inline import strip_all_emojis, EMOJI_ID_TO_ICON
+        icon_char = fallback_char if (fallback_char and fallback_char != "✨") else EMOJI_ID_TO_ICON.get(custom_emoji_id, "✨")
         clean_custom_name = strip_all_emojis(custom_name).strip() if custom_name else ""
         if not clean_custom_name:
             clean_custom_name = f"Custom {custom_emoji_id[-6:]}"
 
-        # Save to user's saved custom emojis table (clean name without duplicate emojis)
-        await add_user_saved_emoji(user_id, custom_emoji_id, name=clean_custom_name, fallback_char="")
-        custom_val = f"custom_tg:{custom_emoji_id}"
-        display_name = f'<tg-emoji emoji-id="{custom_emoji_id}">✨</tg-emoji> <b>{html.escape(clean_custom_name)}</b>\n🆔 <b>Emoji Code:</b> <code>{custom_emoji_id}</code>'
+        # Save to user's saved custom emojis table (with resolved sticker/emoji icon)
+        await add_user_saved_emoji(user_id, custom_emoji_id, name=clean_custom_name, fallback_char=icon_char)
+        custom_val = f"custom_tg:{custom_emoji_id}:{icon_char}"
+        display_name = f'<tg-emoji emoji-id="{custom_emoji_id}">{icon_char}</tg-emoji> <b>{html.escape(clean_custom_name)}</b>\n🆔 <b>Emoji Code:</b> <code>{custom_emoji_id}</code>'
     else:
         clean_icon = raw_text[:10].strip() or "🗳️"
         custom_val = f"custom:{clean_icon}"
