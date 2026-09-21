@@ -91,6 +91,25 @@ def get_candidate_icon(
     else:
         return "🗳️ "
 
+STYLE_PRESETS = [
+    ("dynamic", "👑 Dynamic Leader", "6235252066554484059", "👑"),
+    ("diamond", "💎 VIP Diamond", "6271494293383286950", "💎"),
+    ("zap", "⚡ Lightning Zap", "6271459718896554468", "⚡"),
+    ("star", "⭐ Golden Star", "6181535395914718008", "⭐"),
+    ("radio", "🔘 Radio Circle", "5348084369217052513", "🔘"),
+    ("rocket", "🚀 Rocket Speed", "5445118546700954082", "🚀"),
+    ("shield", "🔰 Verified Shield", "5465154440287757794", "🔰"),
+    ("ballot", "🗳️ Ballot Box", "5837134496868077492", "🗳️"),
+    ("sparkle", "✨ Modern Sparkle", "6179411633371095707", "✨"),
+    ("fire", "🔥 Fire Trend", "5136918320674505825", "🔥"),
+    ("target", "🎯 Bullseye Target", "5310278924616356636", "🎯"),
+    ("sleek", "🔹 Sleek Rhombus", "5393383127294953991", "🔹"),
+    ("trophy", "🏆 Champion Trophy", "5226431245918942763", "🏆"),
+    ("neon", "🟢 Neon Dot", "5395542928909150340", "🟢"),
+]
+
+STYLE_CUSTOM_EMOJIS = {code: emoji_id for code, _, emoji_id, _ in STYLE_PRESETS}
+
 def resolve_candidate_icon_and_emoji(
     cand: Dict[str, Any],
     all_candidates: List[Dict[str, Any]],
@@ -107,6 +126,8 @@ def resolve_candidate_icon_and_emoji(
         parts = style.split(":")
         if len(parts) > 1 and parts[1].isdigit():
             custom_emoji_id = parts[1]
+    elif style in STYLE_CUSTOM_EMOJIS:
+        custom_emoji_id = STYLE_CUSTOM_EMOJIS[style]
     return icon_text, custom_emoji_id
 
 CREATE_POLL_CUSTOM_EMOJI_ID = "5397916757333654639"
@@ -438,41 +459,68 @@ def build_admin_keyboard(user_id: Optional[int] = None) -> InlineKeyboardMarkup:
     ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def build_icon_style_keyboard(current_style: str = "dynamic", back_to: str = "admin") -> InlineKeyboardMarkup:
+def build_icon_style_keyboard(
+    current_style: str = "dynamic",
+    back_to: str = "admin",
+    saved_emojis: Optional[List[Dict[str, Any]]] = None
+) -> InlineKeyboardMarkup:
     """
-    Selector for poll candidate button icon styles (14+ premium themes).
-    Can be called by Super Admin or any Channel Admin.
+    Selector for poll candidate button icon styles (14+ premium themes with custom emoji IDs).
+    Can be called by Super Admin or any Channel Admin/User.
+    Also displays user-saved custom premium emojis.
     """
-    styles = [
-        ("dynamic", "👑 Dynamic Leader (👑 🥈 🥉 🔥 🗳️)"),
-        ("ballot", "🗳️ Ballot Box (🗳️ Option • 0)"),
-        ("diamond", "💎 VIP Diamond (💎 Option • 0)"),
-        ("sparkle", "✨ Modern Sparkle (✨ Option • 0)"),
-        ("zap", "⚡ Lightning Zap (⚡ Option • 0)"),
-        ("fire", "🔥 Fire Trend (🔥 Option • 0)"),
-        ("star", "⭐ Golden Star (⭐ Option • 0)"),
-        ("target", "🎯 Bullseye Target (🎯 Option • 0)"),
-        ("radio", "🔘 Radio Circle (🔘 Option • 0)"),
-        ("sleek", "🔹 Sleek Rhombus (🔹 Option • 0)"),
-        ("rocket", "🚀 Rocket Speed (🚀 Option • 0)"),
-        ("trophy", "🏆 Champion Trophy (🏆 Option • 0)"),
-        ("shield", "🔰 Verified Shield (🔰 Option • 0)"),
-        ("neon", "🟢 Neon Dot (🟢 Option • 0)")
-    ]
     buttons = []
-    # Display in 2 columns for clean presentation
+    
+    # 14 Preset styles in 2 columns with rich custom emoji icons
     row = []
-    for code, label in styles:
-        prefix = "✅ " if code == current_style else ""
-        row.append(InlineKeyboardButton(text=f"{prefix}{label}", callback_data=f"set_icon_style:{code}:{back_to}"))
+    for code, label, emoji_id, _ in STYLE_PRESETS:
+        is_active = (code == current_style)
+        prefix = "✅ " if is_active else ""
+        btn = make_custom_button(
+            text=f"{prefix}{label}",
+            callback_data=f"set_icon_style:{code}:{back_to}",
+            custom_emoji_id=emoji_id
+        )
+        row.append(btn)
         if len(row) == 2:
             buttons.append(row)
             row = []
     if row:
         buttons.append(row)
 
-    custom_label = f"✅ Custom: {current_style[7:]}" if current_style.startswith("custom:") else "✏️ Custom Emoji Icon / নিজের পছন্দের ইমোজি দিন"
-    buttons.append([InlineKeyboardButton(text=custom_label, callback_data=f"prompt_custom_icon:{back_to}")])
+    # Saved Custom Emojis section (if user has saved custom emojis)
+    if saved_emojis:
+        buttons.append([InlineKeyboardButton(
+            text="─── ⭐ সংরক্ষিত কাস্টম ইমোজি (Saved) ───",
+            callback_data="noop"
+        )])
+        for e in saved_emojis:
+            e_id = str(e["emoji_id"])
+            e_fb = e.get("fallback_char", "✨")
+            e_code = f"custom_tg:{e_id}:{e_fb}"
+            is_active = (current_style == e_code or current_style.startswith(f"custom_tg:{e_id}:"))
+            prefix = "✅ " if is_active else "⭐ "
+            name = e.get("name") or f"Emoji {e_id[-6:]}"
+            buttons.append([
+                make_custom_button(
+                    text=f"{prefix}{name}",
+                    callback_data=f"set_icon_style:{e_code}:{back_to}",
+                    custom_emoji_id=e_id
+                ),
+                InlineKeyboardButton(
+                    text="🗑️",
+                    callback_data=f"del_custom_emoji:{e_id}:{back_to}"
+                )
+            ])
+
+    # Button to add a new custom emoji code
+    add_btn_text = "➕ Add Premium Emoji Code / নতুন কোড দিন"
+    buttons.append([
+        InlineKeyboardButton(
+            text=add_btn_text,
+            callback_data=f"prompt_custom_icon:{back_to}"
+        )
+    ])
 
     back_cb = "menu_admin" if back_to == "admin" else "menu_back_main"
     back_text = "🔙 Admin Panel / এডমিন প্যানেল" if back_to == "admin" else "🔙 Main Menu / মূল মেনু"

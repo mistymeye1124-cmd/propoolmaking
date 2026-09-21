@@ -14,7 +14,8 @@ from bot.keyboards.inline import (
 from bot.keyboards.reply import build_persistent_menu
 from bot.database.db import (
     save_channel, deactivate_channel, get_user_language, set_user_language, get_user_icon_style,
-    set_user_icon_style, set_button_icon_style, record_user_channel_access
+    set_user_icon_style, set_button_icon_style, record_user_channel_access,
+    add_user_saved_emoji, get_user_saved_emojis, delete_user_saved_emoji
 )
 from bot.templates import render_start_text, render_help_text, safe_send_message, safe_edit_message
 
@@ -402,14 +403,15 @@ async def reply_btn_icon_style(message: Message):
     user_id = message.from_user.id
     from bot.database.db import get_user_icon_style
     cur_style = await get_user_icon_style(user_id)
-    kb = build_icon_style_keyboard(cur_style, back_to="main")
+    saved_emojis = await get_user_saved_emojis(user_id)
+    kb = build_icon_style_keyboard(cur_style, back_to="main", saved_emojis=saved_emojis)
     lang = await get_user_language(user_id)
     if lang == "en":
-        txt = "🎯 <b>Choose Your Poll Button Icon Theme:</b>\n\nSelect your personal icon style for polls created by you:"
+        txt = "🎯 <b>Choose Your Poll Button Icon Theme:</b>\n\nSelect your personal icon style or use custom premium emoji codes:"
     elif lang == "hi":
-        txt = "🎯 <b>अपने पोल बटन आइकन की थीम चुनें:</b>\n\nआपके द्वारा बनाए गए पोल्स के लिए अपनी व्यक्तिगत आइकन शैली चुनें:"
+        txt = "🎯 <b>अपने पोल बटन आइकन की थीम चुनें:</b>\n\nअपनी व्यक्तिगत आइकन शैली चुनें या कस्टम प्रीमियम इमोजी कोड का उपयोग करें:"
     else:
-        txt = "🎯 <b>আপনার পোলের বাটন আইকন স্টাইল বেছে নিন:</b>\n\nআপনার তৈরি করা পোলের জন্য পছন্দের আইকন থিম সিলেক্ট করুন (এটি আপনার নিজস্ব সেটিং):"
+        txt = "🎯 <b>আপনার পোলের বাটন আইকন স্টাইল বেছে নিন:</b>\n\nআপনার তৈরি করা পোলের জন্য পছন্দের আইকন থিম সিলেক্ট করুন অথবা নিজের কাস্টম প্রিমিয়াম ইমোজি কোড ব্যবহার করুন:"
     await message.answer(txt, reply_markup=kb, parse_mode="HTML")
 
 @router.message(F.text.in_([
@@ -450,26 +452,26 @@ async def cb_user_set_icon_style(callback: CallbackQuery):
     cur_style = await get_user_icon_style(user_id)
     is_user_admin = user_id in ADMIN_IDS
     back_to = "admin" if is_user_admin else "main"
-    kb = build_icon_style_keyboard(cur_style, back_to=back_to)
+    saved_emojis = await get_user_saved_emojis(user_id)
+    kb = build_icon_style_keyboard(cur_style, back_to=back_to, saved_emojis=saved_emojis)
     lang = await get_user_language(user_id)
     if lang == "en":
         txt = (
             "🎯 <b>Choose Your Poll Button Icon Theme:</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "Select your favorite icon theme for your polls:\n\n"
-            "• <b>👑 Dynamic Leader:</b> 👑 for #1, 🥈 for #2, 🥉 for #3, and 🔥 on votes!\n"
-            "• <b>🗳️ Ballot Box:</b> Classic professional voting box.\n"
+            "Select your favorite icon theme for your polls, or add custom premium emoji codes:\n\n"
+            "• <b>👑 Dynamic Leader:</b> Animated dynamic ranking icons!\n"
             "• <b>💎 VIP Diamond:</b> Sparkling luxury diamond.\n"
-            "• <b>✨ Modern Sparkle:</b> Clean modern sparkles.\n\n"
-            "👇 <i>Tap below to select your style:</i>"
+            "• <b>⚡ Lightning Zap:</b> Energetic lightning bolt.\n"
+            "• <b>⭐ Golden Star:</b> Shining gold stars.\n\n"
+            "👇 <i>Tap below to select or add your custom premium emoji code:</i>"
         )
     elif lang == "hi":
         txt = (
             "🎯 <b>अपने पोल बटन आइकन की थीम चुनें:</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "अपने पोल्स के लिए अपनी पसंदीदा आइकन शैली चुनें:\n\n"
-            "• <b>👑 Dynamic Leader:</b> #1 पर 👑, #2 पर 🥈, #3 पर 🥉 और वोटों पर 🔥!\n"
-            "• <b>🗳️ Ballot Box:</b> क्लासिक मतदान बॉक्स।\n"
+            "अपने पोल्स के लिए पसंदीदा आइकन शैली चुनें या कस्टम प्रीमियम इमोजी कोड जोड़ें:\n\n"
+            "• <b>👑 Dynamic Leader:</b> डायनामिक लीडर आइकन!\n"
             "• <b>💎 VIP Diamond:</b> शानदार डायमंड।\n\n"
             "👇 <i>नीचे क्लिक करके स्टाइल चुनें:</i>"
         )
@@ -477,12 +479,12 @@ async def cb_user_set_icon_style(callback: CallbackQuery):
         txt = (
             "🎯 <b>আপনার পোলের বাটন আইকন স্টাইল বেছে নিন:</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "আপনার তৈরি করা পোলের বাটনে কোন ধরনের আকর্ষণীয় আইকন থাকবে তা নির্বাচন করুন:\n\n"
-            "• <b>👑 Dynamic Leader:</b> লিডারের বাটনে 👑, ২য়ে 🥈, ৩য়ে 🥉 ও ভোটে 🔥 আসবে।\n"
-            "• <b>🗳️ Ballot Box:</b> ক্লাসিক ব্যালট বক্স আইকন।\n"
-            "• <b>💎 VIP Diamond:</b> চমৎকার ভিআইপি ডায়মন্ড আইকন।\n"
-            "• <b>✨ Modern Sparkle:</b> আধুনিক স্পার্কল আইকন।\n\n"
-            "👇 <i>পছন্দের স্টাইল সিলেক্ট করতে নিচে চাপুন:</i>"
+            "আপনার তৈরি করা পোলের বাটনে কোন ধরনের প্রিমিয়াম আইকন থাকবে তা নির্বাচন করুন:\n\n"
+            "• <b>👑 Dynamic Leader:</b> ভোটের অগ্রগতির সাথে লাইভ লিডার আইকন।\n"
+            "• <b>💎 VIP Diamond:</b> এক্সক্লুসিভ ভিআইপি ডায়মন্ড।\n"
+            "• <b>⚡ Lightning Zap:</b> পাওয়ারফুল লাইটনিং আইকন।\n"
+            "• <b>⭐ Golden Star:</b> গোল্ডেন স্টার প্রিমিয়াম লুক।\n\n"
+            "👇 <i>পছন্দের স্টাইল সিলেক্ট করুন অথবা নিচে থেকে কাস্টম কোড যোগ করুন:</i>"
         )
     try:
         await callback.message.edit_text(txt, reply_markup=kb, parse_mode="HTML")
@@ -490,10 +492,45 @@ async def cb_user_set_icon_style(callback: CallbackQuery):
         await callback.message.answer(txt, reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
+@router.callback_query(F.data == "noop")
+async def cb_noop(callback: CallbackQuery):
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("del_custom_emoji:"))
+async def cb_delete_custom_emoji(callback: CallbackQuery):
+    parts = callback.data.split(":")
+    emoji_id = parts[1] if len(parts) > 1 else ""
+    raw_back = parts[2] if len(parts) > 2 else "main"
+    user_id = callback.from_user.id
+    is_user_admin = user_id in ADMIN_IDS
+    back_to = "admin" if (raw_back == "admin" and is_user_admin) else "main"
+
+    await delete_user_saved_emoji(user_id, emoji_id)
+    cur_style = await get_user_icon_style(user_id)
+    if emoji_id in cur_style:
+        await set_user_icon_style(user_id, "dynamic")
+        cur_style = "dynamic"
+
+    saved = await get_user_saved_emojis(user_id)
+    kb = build_icon_style_keyboard(cur_style, back_to=back_to, saved_emojis=saved)
+    try:
+        await callback.message.edit_reply_markup(reply_markup=kb)
+    except Exception:
+        pass
+    await callback.answer("🗑️ Custom emoji deleted / সংরক্ষিত ইমোজি মুছে ফেলা হয়েছে!", show_alert=False)
+
 @router.callback_query(F.data.startswith("set_icon_style:"))
 async def cb_set_icon_style(callback: CallbackQuery):
     parts = callback.data.split(":")
-    new_style = parts[1]
+    # Handling cases where style has colons like custom_tg:ID:FALLBACK
+    if callback.data.startswith("set_icon_style:custom_tg:"):
+        sub_parts = callback.data.split(":")
+        new_style = f"{sub_parts[1]}:{sub_parts[2]}:{sub_parts[3]}"
+        raw_back = sub_parts[4] if len(sub_parts) > 4 else "main"
+    else:
+        new_style = parts[1]
+        raw_back = parts[2] if len(parts) > 2 else "main"
+
     user_id = callback.from_user.id
     is_user_admin = user_id in ADMIN_IDS
 
@@ -505,10 +542,10 @@ async def cb_set_icon_style(callback: CallbackQuery):
         await set_button_icon_style(new_style)
 
     # Strictly enforce: non-admins NEVER get back_to="admin"
-    raw_back = parts[2] if len(parts) > 2 else ("admin" if is_user_admin else "main")
     back_to = "admin" if (raw_back == "admin" and is_user_admin) else "main"
 
-    kb = build_icon_style_keyboard(new_style, back_to=back_to)
+    saved = await get_user_saved_emojis(user_id)
+    kb = build_icon_style_keyboard(new_style, back_to=back_to, saved_emojis=saved)
     try:
         await callback.message.edit_reply_markup(reply_markup=kb)
     except Exception:
@@ -526,8 +563,13 @@ async def cb_prompt_custom_icon(callback: CallbackQuery, state: FSMContext):
     msg = (
         "🎨 <b>Custom Button Emoji / কাস্টম বাটন ইমোজি নির্ধারণ</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "আপনার পছন্দের যেকোনো প্রিমিয়াম ইমোজি বা সাধারণ ইমোজি (যেমন: 💎, 🌟, 🔥, 👑, 🎯) নিচে লিখে পাঠান।\n\n"
-        "<i>Send your custom emoji icon below to use on all candidate poll buttons:</i>\n\n"
+        "আপনার পছন্দের যেকোনো <b>Telegram Premium Emoji Code (ID)</b> অথবা সরাসরি প্রিমিয়াম ইমোজি পাঠান।\n\n"
+        "👉 <b>যেভাবে পাঠাতে পারেন:</b>\n"
+        "• সরাসরি প্রিমিয়াম ইমোজি কোড (যেমন: <code>6271494293383286950</code>)\n"
+        "• কোড ও নাম একসাথে: <code>6271494293383286950 VIP Diamond</code>\n"
+        "• আপনার টেলিগ্রাম প্রিমিয়াম কিবোর্ড থেকে সরাসরি যেকোনো ইমোজি সেন্ড করুন\n"
+        "• সাধারণ ইমোজি (যেমন: 💎, 🌟, 🔥, 👑, 🎯)\n\n"
+        "✨ <i>আপনার দেওয়া ইমোজিটি আপনার অ্যাকাউন্টে সবসময় <b>Saved</b> থাকবে এবং আপনি যেকোনো সময় এটি পোলের অপশনে ব্যবহার করতে পারবেন!</i>\n\n"
         "বাতিল করতে /cancel লিখুন।"
     )
     await safe_edit_message(callback.message, msg, parse_mode="HTML")
@@ -545,16 +587,18 @@ async def process_custom_icon(message: Message, state: FSMContext):
     back_to = "admin" if (raw_back == "admin" and message.from_user.id in ADMIN_IDS) else "main"
     await state.clear()
 
-    # Detect if message contains Telegram Premium Custom Emoji
+    user_id = message.from_user.id
+    raw_text = (message.text or message.caption or "").strip()
     custom_emoji_id = None
-    fallback_char = "🗳️"
+    fallback_char = "✨"
+    custom_name = ""
 
-    # 1. Check message entities
+    # 1. Check message entities for Telegram Premium custom emoji
     for entity in (message.entities or []):
         if entity.type == "custom_emoji" and entity.custom_emoji_id:
-            custom_emoji_id = entity.custom_emoji_id
-            if message.text and entity.offset is not None:
-                fallback_char = message.text[entity.offset : entity.offset + (entity.length or 2)]
+            custom_emoji_id = str(entity.custom_emoji_id)
+            if raw_text and entity.offset is not None:
+                fallback_char = raw_text[entity.offset : entity.offset + (entity.length or 2)]
             break
 
     # 2. Check HTML text for <tg-emoji> tags
@@ -562,27 +606,40 @@ async def process_custom_icon(message: Message, state: FSMContext):
         m = re.search(r'<tg-emoji\b[^>]*(?:emoji-id|id)="([0-9]+)"[^>]*>([\s\S]*?)</tg-emoji>', message.html_text, re.IGNORECASE)
         if m:
             custom_emoji_id = m.group(1)
-            fallback_char = m.group(2) or "🗳️"
+            fallback_char = m.group(2) or "✨"
+
+    # 3. Check for raw numeric Telegram Premium Emoji ID (15-22 digits)
+    if not custom_emoji_id:
+        id_match = re.search(r'\b(\d{15,22})\b', raw_text)
+        if id_match:
+            custom_emoji_id = id_match.group(1)
+            # Remaining text is the custom name
+            rest_name = re.sub(r'\b\d{15,22}\b', '', raw_text).strip()
+            if rest_name:
+                custom_name = rest_name[:30].strip()
 
     if custom_emoji_id:
+        if not custom_name:
+            custom_name = f"Custom {custom_emoji_id[-6:]}"
+        # Save to user's saved custom emojis table!
+        await add_user_saved_emoji(user_id, custom_emoji_id, name=custom_name, fallback_char=fallback_char)
         custom_val = f"custom_tg:{custom_emoji_id}:{fallback_char}"
-        display_name = f'<tg-emoji emoji-id="{custom_emoji_id}">{fallback_char}</tg-emoji> (Telegram Premium Emoji ID: <code>{custom_emoji_id}</code>)'
+        display_name = f'<tg-emoji emoji-id="{custom_emoji_id}">{fallback_char}</tg-emoji> <b>{html.escape(custom_name)}</b>\n🆔 <b>Emoji Code:</b> <code>{custom_emoji_id}</code>'
     else:
-        raw_icon = message.text.strip() if message.text else "🗳️"
-        clean_icon = raw_icon[:10].strip()
+        clean_icon = raw_text[:10].strip() or "🗳️"
         custom_val = f"custom:{clean_icon}"
-        display_name = f"<code>{clean_icon}</code>"
+        display_name = f"<code>{html.escape(clean_icon)}</code>"
 
-    user_id = message.from_user.id
     await set_user_icon_style(user_id, custom_val)
     if user_id in ADMIN_IDS:
         await set_button_icon_style(custom_val)
 
-    kb = build_icon_style_keyboard(custom_val, back_to=back_to)
+    saved_emojis = await get_user_saved_emojis(user_id)
+    kb = build_icon_style_keyboard(custom_val, back_to=back_to, saved_emojis=saved_emojis)
     await message.answer(
-        f"✅ <b>Custom Icon Set / কাস্টম আইকন সফলভাবে সেভ হয়েছে!</b>\n\n"
+        f"✅ <b>Custom Icon Saved / কাস্টম আইকন সফলভাবে সেভ হয়েছে!</b>\n\n"
         f"🎯 <b>নির্বাচিত আইকন:</b> {display_name}\n\n"
-        f"✨ আপনার তৈরি করা সকল পোলের অপশনে এখন এই প্রিমিয়াম আইকনটি ব্যবহৃত হবে!",
+        f"✨ এই প্রিমিয়াম ইমোজিটি আপনার অ্যাকাউন্টে স্থায়ীভাবে সেভ থাকবে এবং আপনার তৈরি করা সকল পোলের অপশনে ব্যবহৃত হবে!",
         reply_markup=kb,
         parse_mode="HTML"
     )

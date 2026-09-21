@@ -124,6 +124,18 @@ async def init_db():
             );
         """)
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS user_saved_emojis (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                emoji_id TEXT NOT NULL,
+                name TEXT DEFAULT '',
+                fallback_char TEXT DEFAULT '✨',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, emoji_id)
+            );
+        """)
+
         # Default Super Admin Brand Credit: @ProPoolMaking_bot
         await db.execute("""
             INSERT OR IGNORE INTO settings (key, value)
@@ -718,4 +730,39 @@ async def get_custom_credit_btn_text() -> str:
 
 async def set_custom_credit_btn_text(text: str):
     await set_setting("custom_credit_btn_text", text)
+
+# --- User Saved Custom Emojis ---
+async def add_user_saved_emoji(user_id: int, emoji_id: str, name: str = "", fallback_char: str = "✨") -> bool:
+    async with get_db() as db:
+        clean_id = str(emoji_id).strip()
+        clean_name = name.strip() or f"Emoji {clean_id[-6:]}"
+        clean_fb = fallback_char.strip() or "✨"
+        await db.execute("""
+            INSERT INTO user_saved_emojis (user_id, emoji_id, name, fallback_char)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id, emoji_id) DO UPDATE SET
+                name = excluded.name,
+                fallback_char = excluded.fallback_char;
+        """, (user_id, clean_id, clean_name, clean_fb))
+        await db.commit()
+    return True
+
+async def get_user_saved_emojis(user_id: int) -> List[Dict[str, Any]]:
+    async with get_db() as db:
+        async with db.execute("""
+            SELECT id, user_id, emoji_id, name, fallback_char, created_at
+            FROM user_saved_emojis
+            WHERE user_id = ?
+            ORDER BY id ASC;
+        """, (user_id,)) as cursor:
+            rows = await cursor.fetchall()
+            return [dict(r) for r in rows]
+
+async def delete_user_saved_emoji(user_id: int, emoji_id: str) -> bool:
+    async with get_db() as db:
+        await db.execute("""
+            DELETE FROM user_saved_emojis WHERE user_id = ? AND emoji_id = ?;
+        """, (user_id, str(emoji_id).strip()))
+        await db.commit()
+    return True
 

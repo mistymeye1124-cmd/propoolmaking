@@ -14,7 +14,7 @@ from bot.database.db import (
     get_custom_credit, set_custom_credit,
     get_custom_credit_btn_text, set_custom_credit_btn_text,
     get_button_icon_style, set_button_icon_style,
-    get_user_icon_style, set_user_icon_style
+    get_user_icon_style, set_user_icon_style, get_user_saved_emojis
 )
 from bot.keyboards.inline import (
     build_admin_keyboard, build_templates_menu, build_template_edit_menu,
@@ -1076,7 +1076,8 @@ async def cb_admin_icon_style(callback: CallbackQuery):
         await callback.answer()
         return
     current_style = await get_button_icon_style()
-    kb = build_icon_style_keyboard(current_style, back_to="admin")
+    saved_emojis = await get_user_saved_emojis(callback.from_user.id)
+    kb = build_icon_style_keyboard(current_style, back_to="admin", saved_emojis=saved_emojis)
     text = (
         "🎯 <b>Poll Button Icon Style / ভোটিং বাটন আইকন স্টাইল</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
