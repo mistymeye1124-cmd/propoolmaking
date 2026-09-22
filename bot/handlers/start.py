@@ -140,6 +140,10 @@ async def cb_set_language(callback: CallbackQuery):
 
 @router.callback_query(F.data == "menu_change_lang")
 async def cb_change_language_menu(callback: CallbackQuery):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     user_id = callback.from_user.id
     lang = await get_user_language(user_id)
     prompt = f'<tg-emoji emoji-id="{LANGUAGE_CUSTOM_EMOJI_ID}">🌐</tg-emoji> <b>Please choose your language / আপনার ভাষা নির্বাচন করুন / अपनी भाषा चुनें:</b>'
@@ -183,6 +187,10 @@ async def cmd_help(message: Message, state: FSMContext = None):
 
 @router.callback_query(F.data == "menu_help")
 async def cb_help(callback: CallbackQuery):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     user_id = callback.from_user.id
     lang = await get_user_language(user_id)
     bot_info = await callback.bot.get_me()
@@ -202,6 +210,10 @@ async def cb_help(callback: CallbackQuery):
 
 @router.callback_query(F.data == "menu_back_main")
 async def cb_back_main(callback: CallbackQuery, state: FSMContext = None):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     if state:
         await state.clear()
     user = callback.from_user
@@ -534,6 +546,10 @@ async def reply_btn_admin(message: Message):
 
 @router.callback_query(F.data == "user_set_icon_style")
 async def cb_user_set_icon_style(callback: CallbackQuery):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     user_id = callback.from_user.id
     cur_style = await get_user_icon_style(user_id)
     is_user_admin = user_id in ADMIN_IDS
@@ -607,6 +623,10 @@ async def cb_delete_custom_emoji(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("set_icon_style:"))
 async def cb_set_icon_style(callback: CallbackQuery):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     from bot.keyboards.inline import EMOJI_ID_TO_ICON
     # Handling cases where style has colons like custom_tg:ID:FALLBACK:BACK_TO or custom_tg:ID:BACK_TO
     if callback.data.startswith("set_icon_style:custom_tg:"):
@@ -648,6 +668,10 @@ async def cb_set_icon_style(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("prompt_custom_icon:"))
 async def cb_prompt_custom_icon(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     parts = callback.data.split(":")
     raw_back = parts[1] if len(parts) > 1 else "main"
     back_to = "admin" if (raw_back == "admin" and callback.from_user.id in ADMIN_IDS) else "main"

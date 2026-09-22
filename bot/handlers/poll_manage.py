@@ -435,6 +435,10 @@ async def cb_post_winner_auto(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("post_winner_custom:"))
 async def cb_post_winner_custom(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     user_id = callback.from_user.id
     lang = await get_user_language(user_id)
     poll_id = int(callback.data.split(":")[1])
@@ -575,6 +579,10 @@ async def handle_custom_winner_text(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith("post_winner_skip:"))
 async def cb_post_winner_skip(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     await state.clear()
     user_id = callback.from_user.id
     lang = await get_user_language(user_id)
@@ -684,6 +692,10 @@ async def cb_end_all_parts(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("poll_contact:"))
 async def cb_poll_contact(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     user_id = callback.from_user.id
     lang = await get_user_language(user_id)
     poll_id = int(callback.data.split(":")[1])
