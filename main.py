@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import socket
 import sys
 
 # Ensure UTF-8 console output for Windows cmd/powershell
@@ -37,7 +38,35 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+_single_instance_socket = None
+
+def acquire_single_instance_lock() -> bool:
+    """
+    Binds a localhost socket to prevent multiple concurrent bot instances
+    from running on the same machine, eliminating TelegramConflictError completely.
+    """
+    global _single_instance_socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(("127.0.0.1", 58731))
+        _single_instance_socket = s
+        return True
+    except OSError:
+        logger.error(
+            "\n"
+            "===============================================================\n"
+            "⚠️ [কনফ্লিক্ট রোধ / SINGLE INSTANCE GUARD]\n"
+            "   বটের আরেকটি প্রসেস ইতিমধ্যে এই মেশিনে চালু আছে!\n"
+            "   (Another bot instance is already running on this machine)\n"
+            "   টেলিগ্রাম বাটন ও এপিআই কনফ্লিক্ট রোধে নতুন প্রসেসটি বন্ধ করা হলো।\n"
+            "===============================================================\n"
+        )
+        return False
+
 async def main():
+    if not acquire_single_instance_lock():
+        return
+
     if not BOT_TOKEN or BOT_TOKEN.startswith("YOUR_") or ":" not in BOT_TOKEN:
         logger.error(
             "\n"
@@ -100,6 +129,7 @@ async def main():
             BotCommand(command="start", description="🏠 Start / মূল মেনু - Open Dashboard"),
             BotCommand(command="newpoll", description="➕ Create Poll - নতুন পোল তৈরি করুন"),
             BotCommand(command="mypolls", description="📊 My Polls - আমার পোলসমূহ"),
+            BotCommand(command="channels", description="📢 Added Channels - যুক্ত চ্যানেলসমূহ"),
             BotCommand(command="icons", description="🎯 Button Icons - বাটন আইকন স্টাইল"),
             BotCommand(command="language", description="🌐 Language - ভাষা পরিবর্তন"),
             BotCommand(command="help", description="ℹ️ Help - ব্যবহারের গাইড"),
@@ -156,8 +186,15 @@ async def main():
             allowed_updates=["message", "callback_query", "chat_member", "my_chat_member"]
         )
     finally:
-        timer_task.cancel()
-        await bot.session.close()
+        if 'timer_task' in locals() and not timer_task.done():
+            timer_task.cancel()
+        if 'bot' in locals():
+            await bot.session.close()
+        if _single_instance_socket:
+            try:
+                _single_instance_socket.close()
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     try:

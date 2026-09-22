@@ -43,62 +43,160 @@ def get_base_title(title: str) -> str:
 
 async def check_command_breakout(message: Message, state: FSMContext) -> bool:
     """
-    If user sends a slash command while in an FSM creation state,
-    immediately clear state and route to the corresponding command handler
-    so the user is never stuck and commands are never swallowed as poll text.
+    If user sends a slash command OR taps a persistent menu reply button
+    while in an FSM creation state, immediately clear state and route to the
+    corresponding command handler so the user is never stuck and buttons/commands
+    are never swallowed as poll text.
     Returns True if handled (caller should return immediately).
     """
     raw_text = (message.text or "").strip()
-    if not raw_text or not raw_text.startswith("/"):
+    if not raw_text:
         return False
 
-    cmd_raw = raw_text.split()[0].lower()
-    cmd = cmd_raw.split("@")[0]  # strip bot username if present, e.g. /mypolls@bot
+    # 1. Slash commands
+    if raw_text.startswith("/"):
+        cmd_raw = raw_text.split()[0].lower()
+        cmd = cmd_raw.split("@")[0]  # strip bot username if present, e.g. /mypolls@bot
 
-    if cmd == "/cancel":
+        if cmd == "/cancel":
+            await state.clear()
+            await message.answer("❌ Poll creation cancelled / পোল তৈরির প্রক্রিয়া বাতিল করা হয়েছে।")
+            return True
+        elif cmd == "/mypolls":
+            await state.clear()
+            from bot.handlers.poll_manage import show_user_polls
+            await show_user_polls(message.from_user.id, message)
+            return True
+        elif cmd == "/start":
+            await state.clear()
+            from bot.handlers.start import cmd_start
+            await cmd_start(message)
+            return True
+        elif cmd == "/help":
+            await state.clear()
+            from bot.handlers.start import cmd_help
+            await cmd_help(message)
+            return True
+        elif cmd in ("/newpoll", "/createpoll"):
+            await state.clear()
+            await start_poll_wizard(message, state)
+            return True
+        elif cmd == "/icons":
+            await state.clear()
+            from bot.handlers.start import reply_btn_icon_style
+            await reply_btn_icon_style(message)
+            return True
+        elif cmd == "/language":
+            await state.clear()
+            from bot.handlers.start import reply_btn_language
+            await reply_btn_language(message)
+            return True
+        elif cmd in ("/channels", "/mychannels", "/addedchannels"):
+            await state.clear()
+            from bot.handlers.user_channels import show_user_channels
+            await show_user_channels(message, message.bot, message.from_user.id, is_callback=False)
+            return True
+        elif cmd == "/admin":
+            if message.from_user.id in ADMIN_IDS:
+                await state.clear()
+                from bot.handlers.admin import cmd_admin
+                await cmd_admin(message)
+                return True
+            return False
+
         await state.clear()
-        await message.answer("❌ Poll creation cancelled / পোল তৈরির প্রক্রিয়া বাতিল করা হয়েছে।")
+        await message.answer("❌ Process cancelled / প্রক্রিয়াটি বাতিল করা হয়েছে।")
         return True
-    elif cmd == "/mypolls":
+
+    # 2. Persistent Menu Reply Buttons (across all supported languages)
+    from bot.handlers.start import START_BUTTON_TEXTS, ADDED_CHANNELS_BUTTON_TEXTS
+
+    if raw_text in START_BUTTON_TEXTS:
         await state.clear()
-        from bot.handlers.poll_manage import show_user_polls
-        await show_user_polls(message.from_user.id, message)
+        from bot.handlers.start import reply_btn_start
+        await reply_btn_start(message, None)
         return True
-    elif cmd == "/start":
-        await state.clear()
-        from bot.handlers.start import cmd_start
-        await cmd_start(message)
-        return True
-    elif cmd == "/help":
-        await state.clear()
-        from bot.handlers.start import cmd_help
-        await cmd_help(message)
-        return True
-    elif cmd in ("/newpoll", "/createpoll"):
+
+    if raw_text in (
+        "➕ Create New Poll", "➕ নতুন পোল তৈরি করুন", "➕ नया पोल बनाएं",
+        "➕ إنشاء استطلاع جديد", "➕ Создать новый опрос",
+        "Create New Poll", "নতুন পোল তৈরি করুন", "नया पोल बनाएं",
+        "إنشاء استطلاع جديد", "Создать новый опрос"
+    ):
         await state.clear()
         await start_poll_wizard(message, state)
         return True
-    elif cmd == "/icons":
+
+    if raw_text in (
+        "📊 My Polls", "📊 আমার পোল তালিকা", "📊 मेरे पोल्स",
+        "📊 استطلاعاتي", "📊 Мои опросы",
+        "My Polls", "আমার পোল তালিকা", "मेरे पोल्स",
+        "استطلاعاتي", "Мои опросы"
+    ):
+        await state.clear()
+        from bot.handlers.poll_manage import cmd_mypolls
+        await cmd_mypolls(message, None)
+        return True
+
+    if raw_text in ADDED_CHANNELS_BUTTON_TEXTS:
+        await state.clear()
+        from bot.handlers.user_channels import show_user_channels
+        await show_user_channels(message, message.bot, message.from_user.id, is_callback=False)
+        return True
+
+    if raw_text in (
+        "📢 Add Bot to Channel", "📢 চ্যানেলে যুক্ত করুন (১-ক্লিক)", "📢 चैनल में बॉट जोड़ें",
+        "📢 إضافة البوت للقناة", "📢 Добавить в канал",
+        "Add Bot to Channel", "চ্যানেলে যুক্ত করুন (১-ক্লিক)", "चैनल में बॉट जोड़ें",
+        "إضافة البوت للقناة", "Добавить в канал"
+    ):
+        await state.clear()
+        from bot.handlers.start import reply_btn_add_channel
+        await reply_btn_add_channel(message)
+        return True
+
+    if raw_text in (
+        "🎯 Button Icons", "🎯 বাটন আইকন স্টাইল", "🎯 बटन आइकन",
+        "🎯 نمط الأيقونات", "🎯 Стиль иконок",
+        "🎨 Button Icons", "🎨 বাটন আইকন", "🎨 বাটনের আইকন",
+        "Button Icons", "বাটন আইকন স্টাইল", "बटन आइकन",
+        "نمط الأيقونات", "Стиль иконок"
+    ):
         await state.clear()
         from bot.handlers.start import reply_btn_icon_style
         await reply_btn_icon_style(message)
         return True
-    elif cmd == "/language":
+
+    if raw_text in (
+        "🌐 Language", "🌐 ভাষা পরিবর্তন", "🌐 भाषा", "🌐 اللغة", "🌐 Язык",
+        "Language", "ভাষা পরিবর্তন", "ভাষা", "اللغة", "Язык"
+    ):
         await state.clear()
         from bot.handlers.start import reply_btn_language
         await reply_btn_language(message)
         return True
-    elif cmd == "/admin":
+
+    if raw_text in (
+        "ℹ️ Help & Guide", "ℹ️ ব্যবহারের নিয়ম ও গাইড", "ℹ️ सहायता एवं गाइड",
+        "ℹ️ مساعدة ودليل", "ℹ️ Помощь и гид",
+        "ℹ️ Help & Support", "ℹ️ ব্যবহারের নিয়ম ও সাপোর্ট",
+        "Help & Guide", "ব্যবহারের নিয়ম ও গাইড", "सहायता एवं गाइड",
+        "مساعدة ودليل", "Помощь и гид",
+        "Help & Support", "ব্যবহারের নিয়ম ও সাপোর্ট"
+    ):
+        await state.clear()
+        from bot.handlers.start import reply_btn_help
+        await reply_btn_help(message)
+        return True
+
+    if raw_text in ("👑 Admin Panel", "👑 এডমিন প্যানেল", "👑 সুপার এডমিন"):
         if message.from_user.id in ADMIN_IDS:
             await state.clear()
             from bot.handlers.admin import cmd_admin
             await cmd_admin(message)
             return True
-        return False
 
-    await state.clear()
-    await message.answer("❌ Process cancelled / প্রক্রিয়াটি বাতিল করা হয়েছে।")
-    return True
+    return False
 
 async def publish_single_part(
     bot: Bot,
@@ -202,6 +300,8 @@ async def safe_answer_or_edit(
             return await msg_or_cb.edit_text(text=text, reply_markup=reply_markup, parse_mode=parse_mode, **kwargs)
     except Exception as e:
         err_msg = str(e).lower()
+        if "message is not modified" in err_msg:
+            return None
         if "custom emoji" in err_msg or "button" in err_msg:
             fallback_text = strip_tg_emoji_tags(text) if parse_mode == "HTML" else text
             fallback_markup = strip_button_custom_emojis(reply_markup)
@@ -300,6 +400,10 @@ async def process_title(message: Message, state: FSMContext):
     # If candidates were already provided (e.g. from pasted candidates flow)
     if data.get("candidates"):
         await state.set_state(PollCreationState.channel)
+        preselected_id = data.get("preselected_target_chat_id")
+        if preselected_id:
+            await validate_and_proceed_channel(message.bot, preselected_id, state, message, message.from_user.id, False)
+            return
         await show_channel_selection_prompt(message.bot, message.from_user.id, message, is_callback=False)
         return
 
@@ -369,9 +473,12 @@ async def show_channel_selection_prompt(bot: Bot, user_id: int, message_or_cb, i
 
 @router.callback_query(F.data == "retry_channel_step")
 async def cb_retry_channel_step(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     await state.set_state(PollCreationState.channel)
     await show_channel_selection_prompt(callback.bot, callback.from_user.id, callback.message, is_callback=True)
-    await callback.answer()
 
 @router.message(PollCreationState.candidates)
 async def process_candidates(message: Message, state: FSMContext):
@@ -441,13 +548,45 @@ async def process_candidates(message: Message, state: FSMContext):
             )
         await message.answer(info_note, parse_mode="HTML")
 
+    data = await state.get_data()
+    preselected_id = data.get("preselected_target_chat_id")
+    if preselected_id:
+        await validate_and_proceed_channel(message.bot, preselected_id, state, message, message.from_user.id, False)
+        return
     await show_channel_selection_prompt(message.bot, message.from_user.id, message, is_callback=False)
 
-@router.callback_query(PollCreationState.channel, F.data.startswith("sel_chan:"))
+@router.callback_query(F.data.startswith("sel_chan:"))
 async def cb_select_channel(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+
     chat_id = int(callback.data.split(":")[1])
+    data = await state.get_data()
+
+    # If state was lost or expired (e.g. after bot restart or idle)
+    if not data.get("candidates") and not data.get("title"):
+        user_lang = await get_user_language(callback.from_user.id)
+        bot_info = await callback.bot.get_me()
+        is_admin = callback.from_user.id in ADMIN_IDS
+        from bot.keyboards.inline import build_main_menu
+        expired_msg = (
+            "⚠️ <b>সেশনের সময় শেষ হয়েছে বা পোল পুনরায় শুরু করতে হবে!</b>\n\n"
+            "অনুগ্রহ করে নিচের <b>'নতুন পোল তৈরি করুন'</b> বাটনে চাপ দিয়ে আবার শুরু করুন।"
+            if user_lang == "bn" else
+            "⚠️ <b>Session expired or poll creation needs to be restarted!</b>\n\n"
+            "Please tap <b>'Create New Poll'</b> below to start fresh."
+        )
+        await callback.message.answer(
+            expired_msg,
+            reply_markup=build_main_menu(is_admin, bot_info.username, user_lang),
+            parse_mode="HTML"
+        )
+        return
+
+    await state.set_state(PollCreationState.channel)
     await validate_and_proceed_channel(callback.bot, chat_id, state, callback.message, callback.from_user.id, is_callback=True)
-    await callback.answer()
 
 @router.message(PollCreationState.channel)
 async def process_channel(message: Message, state: FSMContext):
@@ -1919,18 +2058,23 @@ async def cb_apply_paste_dismiss(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "cancel_publish")
 async def cancel_publish(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     await state.clear()
     user_lang = await get_user_language(callback.from_user.id)
     back_text = "🔙 Back to Main Menu / মূল মেনু" if user_lang == "bn" else "🔙 Back to Main Menu"
     back_kb = InlineKeyboardMarkup(inline_keyboard=[
         [make_custom_button(text=back_text, callback_data="menu_back_main", custom_emoji_id=START_MENU_CUSTOM_EMOJI_ID)]
     ])
-    await callback.message.edit_text(
+    await safe_answer_or_edit(
+        callback,
         "❌ Poll publication cancelled / পোল বাতিল করা হয়েছে।",
         reply_markup=back_kb,
+        is_callback=True,
         parse_mode="HTML"
     )
-    await callback.answer()
 
 # Alias for backwards compatibility
 cmd_new_poll = start_poll_wizard

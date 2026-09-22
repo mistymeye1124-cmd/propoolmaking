@@ -4,6 +4,7 @@ from bot.keyboards.inline import (
     CREATE_POLL_CUSTOM_EMOJI_ID,
     MY_POLLS_CUSTOM_EMOJI_ID,
     ADD_CHANNEL_CUSTOM_EMOJI_ID,
+    ADDED_CHANNELS_CUSTOM_EMOJI_ID,
     BUTTON_ICONS_CUSTOM_EMOJI_ID,
     LANGUAGE_CUSTOM_EMOJI_ID,
     HELP_CUSTOM_EMOJI_ID
@@ -19,6 +20,7 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
         btn_start = "Start / Main Menu"
         btn_create = "Create New Poll"
         btn_polls = "My Polls"
+        btn_added_channels = "📢 Added Channels"
         btn_channel = "Add Bot to Channel"
         btn_brand = "🏷️ Brand & Link"
         btn_icons = "Button Icons"
@@ -28,6 +30,7 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
         btn_start = "Start / मुख्य मेनू"
         btn_create = "नया पोल बनाएं"
         btn_polls = "मेरे पोल्स"
+        btn_added_channels = "📢 जुड़े हुए चैनल"
         btn_channel = "चैनल में बॉट जोड़ें"
         btn_brand = "🏷️ ब्रांड और लिंक"
         btn_icons = "बटन आइकन"
@@ -37,6 +40,7 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
         btn_start = "Start / القائمة الرئيسية"
         btn_create = "إنشاء استطلاع جديد"
         btn_polls = "استطلاعاتي"
+        btn_added_channels = "📢 القنوات المضافة"
         btn_channel = "إضافة البوت للقناة"
         btn_brand = "🏷️ العلامة والرابط"
         btn_icons = "نمط الأيقونات"
@@ -46,6 +50,7 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
         btn_start = "Start / Главное меню"
         btn_create = "Создать новый опрос"
         btn_polls = "Мои опросы"
+        btn_added_channels = "📢 Добавленные каналы"
         btn_channel = "Добавить в канал"
         btn_brand = "🏷️ Бренд и ссылка"
         btn_icons = "Иконки кнопок"
@@ -55,6 +60,7 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
         btn_start = "Start / মূল মেনু"
         btn_create = "নতুন পোল তৈরি করুন"
         btn_polls = "আমার পোল তালিকা"
+        btn_added_channels = "📢 যুক্ত চ্যানেলসমূহ"
         btn_channel = "চ্যানেলে যুক্ত করুন (১-ক্লিক)"
         btn_brand = "🏷️ ব্র্যান্ড ও লিংক"
         btn_icons = "বাটন আইকন স্টাইল"
@@ -68,11 +74,14 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
             KeyboardButton(text=btn_polls, icon_custom_emoji_id=MY_POLLS_CUSTOM_EMOJI_ID)
         ],
         [
-            KeyboardButton(text=btn_channel, icon_custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID),
-            KeyboardButton(text=btn_icons, icon_custom_emoji_id=BUTTON_ICONS_CUSTOM_EMOJI_ID)
+            KeyboardButton(text=btn_added_channels, icon_custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID),
+            KeyboardButton(text=btn_channel, icon_custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID)
         ],
         [
-            KeyboardButton(text=btn_lang, icon_custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID),
+            KeyboardButton(text=btn_icons, icon_custom_emoji_id=BUTTON_ICONS_CUSTOM_EMOJI_ID),
+            KeyboardButton(text=btn_lang, icon_custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID)
+        ],
+        [
             KeyboardButton(text=btn_help, icon_custom_emoji_id=HELP_CUSTOM_EMOJI_ID)
         ]
     ]

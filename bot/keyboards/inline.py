@@ -165,6 +165,7 @@ def resolve_candidate_icon_and_emoji(
 
 CREATE_POLL_CUSTOM_EMOJI_ID = "5397916757333654639"
 ADD_CHANNEL_CUSTOM_EMOJI_ID = "6242353099193718277"
+ADDED_CHANNELS_CUSTOM_EMOJI_ID = "6032575759606878027"
 MY_POLLS_CUSTOM_EMOJI_ID = "6269397073737553354"
 BUTTON_ICONS_CUSTOM_EMOJI_ID = "5201762530023733712"
 LANGUAGE_CUSTOM_EMOJI_ID = "5397798946380721942"
@@ -322,6 +323,7 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
     if lang == "en":
         keyboard = [
             [make_custom_button(text="Create New Poll", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
+            [make_custom_button(text="📢 Added Channels", callback_data="menu_my_channels", custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID)],
             [make_custom_button(text="Add Bot to Channel (1-Click) ➔", url=add_channel_url, custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID)] if add_channel_url else [],
             [
                 make_custom_button(text="My Polls", callback_data="menu_my_polls", custom_emoji_id=MY_POLLS_CUSTOM_EMOJI_ID),
@@ -338,6 +340,7 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
     elif lang == "hi":
         keyboard = [
             [make_custom_button(text="नया पोल बनाएं", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
+            [make_custom_button(text="📢 जुड़े हुए चैनल (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID)],
             [make_custom_button(text="चैनल में बॉट जोड़ें (1-क्लिक) ➔", url=add_channel_url, custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID)] if add_channel_url else [],
             [
                 make_custom_button(text="मेरे पोल्स", callback_data="menu_my_polls", custom_emoji_id=MY_POLLS_CUSTOM_EMOJI_ID),
@@ -354,6 +357,7 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
     elif lang == "ar":
         keyboard = [
             [make_custom_button(text="إنشاء استطلاع جديد", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
+            [make_custom_button(text="📢 القنوات المضافة (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID)],
             [make_custom_button(text="إضافة البوت إلى القناة (نقرة واحدة) ➔", url=add_channel_url, custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID)] if add_channel_url else [],
             [
                 make_custom_button(text="استطلاعاتي", callback_data="menu_my_polls", custom_emoji_id=MY_POLLS_CUSTOM_EMOJI_ID),
@@ -370,6 +374,7 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
     elif lang == "ru":
         keyboard = [
             [make_custom_button(text="Создать новый опрос", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
+            [make_custom_button(text="📢 Добавленные каналы (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID)],
             [make_custom_button(text="Добавить в канал (1 клик) ➔", url=add_channel_url, custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID)] if add_channel_url else [],
             [
                 make_custom_button(text="Мои опросы", callback_data="menu_my_polls", custom_emoji_id=MY_POLLS_CUSTOM_EMOJI_ID),
@@ -386,6 +391,7 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
     else:
         keyboard = [
             [make_custom_button(text="নতুন পোল তৈরি করুন", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
+            [make_custom_button(text="📢 যুক্ত চ্যানেলসমূহ (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID)],
             [make_custom_button(text="চ্যানেলে যুক্ত করুন (১-ক্লিক এডমিন) ➔", url=add_channel_url, custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID)] if add_channel_url else [],
             [
                 make_custom_button(text="আমার পোল তালিকা", callback_data="menu_my_polls", custom_emoji_id=MY_POLLS_CUSTOM_EMOJI_ID),
@@ -822,4 +828,128 @@ def build_winner_announcement_choice_keyboard(poll_id: int, lang: str = "bn") ->
         [InlineKeyboardButton(text=auto_text, callback_data=f"post_winner_auto:{poll_id}")],
         [InlineKeyboardButton(text=custom_text, callback_data=f"post_winner_custom:{poll_id}")],
         [InlineKeyboardButton(text=skip_text, callback_data=f"post_winner_skip:{poll_id}")]
+    ])
+
+
+def build_user_channels_keyboard(
+    channels: List[Dict[str, Any]],
+    add_channel_url: Optional[str] = None,
+    lang: str = "bn"
+) -> InlineKeyboardMarkup:
+    """
+    Builds the user-facing keyboard listing all channels connected by this user.
+    """
+    keyboard = []
+    for ch in channels:
+        status_icon = "🟢" if ch.get("is_active", 1) == 1 else "🔴"
+        title = ch.get("title") or f"Channel {ch['chat_id']}"
+        if len(title) > 24:
+            title = title[:21] + "..."
+        btn_text = f"📢 {title} ({status_icon})"
+        keyboard.append([
+            InlineKeyboardButton(text=btn_text, callback_data=f"user_chan_view:{ch['chat_id']}")
+        ])
+
+    action_row = []
+    if lang == "en":
+        add_manual_txt = "➕ Add Manual"
+        one_click_txt = "📢 1-Click Setup ➔"
+        back_txt = "🔙 Main Menu"
+    elif lang == "hi":
+        add_manual_txt = "➕ मैन्युअल जोड़ें"
+        one_click_txt = "📢 1-क्लिक सेटअप ➔"
+        back_txt = "🔙 मुख्य मेनू"
+    elif lang == "ar":
+        add_manual_txt = "➕ إضافة يدويًا"
+        one_click_txt = "📢 إعداد بنقرة واحدة ➔"
+        back_txt = "🔙 القائمة الرئيسية"
+    elif lang == "ru":
+        add_manual_txt = "➕ Добавить вручную"
+        one_click_txt = "📢 Настройка в 1 клик ➔"
+        back_txt = "🔙 Главное меню"
+    else:
+        add_manual_txt = "➕ ম্যানুয়ালি যুক্ত"
+        one_click_txt = "📢 ১-ক্লিক যুক্ত ➔"
+        back_txt = "🔙 মূল মেনু / Main Menu"
+
+    action_row.append(InlineKeyboardButton(text=add_manual_txt, callback_data="user_chan_add_manual"))
+
+    if add_channel_url:
+        action_row.append(InlineKeyboardButton(text=one_click_txt, url=add_channel_url))
+    keyboard.append(action_row)
+
+    keyboard.append([
+        make_custom_button(text=back_txt, callback_data="menu_back_main", custom_emoji_id=START_MENU_CUSTOM_EMOJI_ID)
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def build_user_channel_detail_keyboard(
+    chat_id: int,
+    is_active: bool = True,
+    lang: str = "bn"
+) -> InlineKeyboardMarkup:
+    """
+    Action keyboard for a specific user-connected channel.
+    """
+    if lang == "en":
+        btn_poll = "📊 Create Poll Here"
+        btn_test = "🔄 Re-check Permissions"
+        btn_del = "🗑️ Disconnect Channel"
+        btn_back = "🔙 Back to Added Channels"
+    elif lang == "hi":
+        btn_poll = "📊 इस चैनल में पोल बनाएं"
+        btn_test = "🔄 अनुमति जांचें"
+        btn_del = "🗑️ चैनल हटाएं"
+        btn_back = "🔙 जुड़े चैनलों पर लौटें"
+    elif lang == "ar":
+        btn_poll = "📊 إنشاء استطلاع هنا"
+        btn_test = "🔄 فحص الأذونات"
+        btn_del = "🗑️ فصل القناة"
+        btn_back = "🔙 العودة للقنوات المضافة"
+    elif lang == "ru":
+        btn_poll = "📊 Создать опрос здесь"
+        btn_test = "🔄 Проверить права"
+        btn_del = "🗑️ Отключить канал"
+        btn_back = "🔙 Назад к добавленным каналам"
+    else:
+        btn_poll = "📊 এই চ্যানেলে পোল দিন"
+        btn_test = "🔄 পারমিশন যাচাই (Re-check)"
+        btn_del = "🗑️ চ্যানেল সরান (Disconnect)"
+        btn_back = "🔙 যুক্ত চ্যানেল তালিকায় ফিরুন"
+
+    keyboard = [
+        [InlineKeyboardButton(text=btn_poll, callback_data=f"chan_create_poll:{chat_id}")],
+        [
+            InlineKeyboardButton(text=btn_test, callback_data=f"user_chan_test:{chat_id}"),
+            InlineKeyboardButton(text=btn_del, callback_data=f"user_chan_del:{chat_id}")
+        ],
+        [make_custom_button(text=btn_back, callback_data="menu_my_channels", custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID)]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def build_user_channel_confirm_delete_keyboard(chat_id: int, lang: str = "bn") -> InlineKeyboardMarkup:
+    """
+    Confirmation keyboard before disconnecting a channel.
+    """
+    if lang == "en":
+        confirm_txt = "🗑️ Yes, Disconnect"
+        cancel_txt = "🔙 Cancel"
+    elif lang == "hi":
+        confirm_txt = "🗑️ हां, हटाएं"
+        cancel_txt = "🔙 रद्द करें"
+    elif lang == "ar":
+        confirm_txt = "🗑️ نعم، افصل القناة"
+        cancel_txt = "🔙 إلغاء"
+    elif lang == "ru":
+        confirm_txt = "🗑️ Да, отключить"
+        cancel_txt = "🔙 Отмена"
+    else:
+        confirm_txt = "🗑️ হ্যাঁ, নিশ্চিত সরান / Yes, Remove"
+        cancel_txt = "🔙 বাতিল / Cancel"
+
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=confirm_txt, callback_data=f"user_chan_del_confirm:{chat_id}")],
+        [InlineKeyboardButton(text=cancel_txt, callback_data=f"user_chan_view:{chat_id}")]
     ])

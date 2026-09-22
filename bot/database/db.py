@@ -280,6 +280,35 @@ async def delete_channel(chat_id: int):
         await db.execute("DELETE FROM channels WHERE chat_id = ?", (chat_id,))
         await db.commit()
 
+async def get_user_all_channels(user_id: int) -> List[Dict[str, Any]]:
+    """
+    Returns all channels (both active and inactive) connected by or authorized for this user.
+    Maintains strict user isolation: a user can only ever see their own channels.
+    """
+    async with get_db() as db:
+        async with db.execute("""
+            SELECT DISTINCT c.* FROM channels c
+            LEFT JOIN user_channel_permissions p ON c.chat_id = p.chat_id
+            WHERE c.added_by = ? OR p.user_id = ?
+            ORDER BY c.is_active DESC, c.created_at DESC
+        """, (user_id, user_id)) as cursor:
+            return [dict(r) for r in await cursor.fetchall()]
+
+async def unlink_user_channel(user_id: int, chat_id: int):
+    """
+    Removes user's permission for a channel. If no other users are authorized,
+    marks the channel inactive.
+    """
+    async with get_db() as db:
+        await db.execute("DELETE FROM user_channel_permissions WHERE user_id = ? AND chat_id = ?", (user_id, chat_id))
+        await db.execute("UPDATE channels SET added_by = NULL WHERE chat_id = ? AND added_by = ?", (chat_id, user_id))
+        async with db.execute("SELECT COUNT(*) FROM user_channel_permissions WHERE chat_id = ?", (chat_id,)) as cur:
+            row = await cur.fetchone()
+            count = row[0] if row else 0
+        if count == 0:
+            await db.execute("UPDATE channels SET is_active = 0 WHERE chat_id = ?", (chat_id,))
+        await db.commit()
+
 # --- Custom Credit / Brand operations ---
 async def get_custom_credit() -> Tuple[str, str]:
     name = await get_setting("custom_credit_name", "")

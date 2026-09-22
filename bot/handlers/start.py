@@ -1,3 +1,4 @@
+import html
 import re
 from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
@@ -9,11 +10,11 @@ from bot.keyboards.inline import (
     build_main_menu, build_language_selection_keyboard, build_icon_style_keyboard,
     make_custom_button, CREATE_POLL_CUSTOM_EMOJI_ID, ADD_CHANNEL_CUSTOM_EMOJI_ID,
     MY_POLLS_CUSTOM_EMOJI_ID, BUTTON_ICONS_CUSTOM_EMOJI_ID, LANGUAGE_CUSTOM_EMOJI_ID,
-    HELP_CUSTOM_EMOJI_ID, START_MENU_CUSTOM_EMOJI_ID
+    HELP_CUSTOM_EMOJI_ID, START_MENU_CUSTOM_EMOJI_ID, ADDED_CHANNELS_CUSTOM_EMOJI_ID
 )
 from bot.keyboards.reply import build_persistent_menu
 from bot.database.db import (
-    save_channel, deactivate_channel, get_user_language, set_user_language, get_user_icon_style,
+    save_channel, deactivate_channel, set_channel_status, get_user_language, set_user_language, get_user_icon_style,
     set_user_icon_style, set_button_icon_style, record_user_channel_access,
     add_user_saved_emoji, get_user_saved_emojis, delete_user_saved_emoji
 )
@@ -228,17 +229,80 @@ async def on_my_chat_member_update(event: ChatMemberUpdated):
 
     if chat.type in ["channel", "supergroup", "group"]:
         if new_member.status in ["administrator", "creator"]:
+            can_post = getattr(new_member, "can_post_messages", True)
             await save_channel(
                 chat_id=chat.id,
                 title=chat.title or "Untitled Channel",
                 username=chat.username,
                 added_by=user.id if user else None
             )
+            if not can_post:
+                await set_channel_status(chat.id, 0)
+            else:
+                await set_channel_status(chat.id, 1)
+
             if user:
                 await record_user_channel_access(user.id, chat.id)
+                # Instant Direct Confirmation to User who added the bot
+                try:
+                    user_lang = await get_user_language(user.id)
+                    user_confirm_kb = InlineKeyboardMarkup(inline_keyboard=[
+                        [make_custom_button(
+                            text="📢 যুক্ত চ্যানেলসমূহ (Added Channels)" if user_lang == "bn" else "📢 Added Channels",
+                            callback_data="menu_my_channels",
+                            custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID
+                        )],
+                        [InlineKeyboardButton(
+                            text="📊 এই চ্যানেলে পোল দিন" if user_lang == "bn" else "📊 Create Poll Here",
+                            callback_data=f"chan_create_poll:{chat.id}"
+                        )],
+                        [make_custom_button(
+                            text="🏠 মূল মেনু / Main Menu",
+                            callback_data="menu_back_main",
+                            custom_emoji_id=START_MENU_CUSTOM_EMOJI_ID
+                        )]
+                    ])
+                    chan_title_esc = html.escape(chat.title or "Channel")
+                    if can_post:
+                        if user_lang == "en":
+                            user_msg = (
+                                "🎉 <b>Channel Added Successfully Without Any Errors!</b>\n"
+                                "━━━━━━━━━━━━━━━━━━━━\n"
+                                f"📢 <b>Channel:</b> {chan_title_esc}\n"
+                                f"🆔 <b>Chat ID:</b> <code>{chat.id}</code>\n"
+                                "🟢 <b>Status:</b> Active & Verified\n\n"
+                                "Tap <b>'Added Channels'</b> below to view all your connected channels, or create a poll right away!"
+                            )
+                        else:
+                            user_msg = (
+                                "🎉 <b>আপনার চ্যানেল সফলভাবে যুক্ত হয়েছে!</b>\n"
+                                "━━━━━━━━━━━━━━━━━━━━\n"
+                                f"📢 <b>চ্যানেল:</b> {chan_title_esc}\n"
+                                f"🆔 <b>আইডি:</b> <code>{chat.id}</code>\n"
+                                "🟢 <b>স্ট্যাটাস:</b> সক্রিয় ও ভেরিফাইড (ভুল ছাড়া যুক্ত হয়েছে!)\n\n"
+                                "আপনার যুক্ত করা চ্যানেলগুলো দেখতে নিচের <b>'📢 যুক্ত চ্যানেলসমূহ'</b> বাটনে চাপ দিন, অথবা এখনই সরাসরি পোল তৈরি করুন:"
+                            )
+                    else:
+                        if user_lang == "en":
+                            user_msg = (
+                                "⚠️ <b>Channel Added, but 'Post Messages' Permission is Missing!</b>\n"
+                                "━━━━━━━━━━━━━━━━━━━━\n"
+                                f"📢 <b>Channel:</b> {chan_title_esc}\n"
+                                "Please open Channel Settings ➔ Administrators ➔ Bot, enable 'Post Messages', and re-check in Added Channels."
+                            )
+                        else:
+                            user_msg = (
+                                "⚠️ <b>চ্যানেল যুক্ত হয়েছে, কিন্তু পোস্ট পারমিশন বন্ধ আছে!</b>\n"
+                                "━━━━━━━━━━━━━━━━━━━━\n"
+                                f"📢 <b>চ্যানেল:</b> {chan_title_esc}\n"
+                                "চ্যানেলে ভোটিং পোল পাঠাতে হলে 'Post Messages' অনুমতি চালু থাকতে হবে। "
+                                "চ্যানেল এডমিন সেটিংসে অনুমতি চালু করুন এবং 'যুক্ত চ্যানেলসমূহ' থেকে পারমিশন যাচাই করুন।"
+                            )
+                    await bot.send_message(chat_id=user.id, text=user_msg, reply_markup=user_confirm_kb, parse_mode="HTML")
+                except Exception:
+                    pass
 
             # Instant Super Admin Notification
-            can_post = getattr(new_member, "can_post_messages", True)
             post_status_str = "✅ Yes / অনুমোদিত" if can_post else "⚠️ No Post Permission / পোস্টের অনুমতি নেই"
             user_mention = f"@{user.username}" if (user and user.username) else (user.full_name if user else "Unknown")
             channel_link = f"@{chat.username}" if chat.username else f"ID: <code>{chat.id}</code>"
@@ -286,6 +350,15 @@ async def cmd_icons(message: Message, state: FSMContext = None):
     if state:
         await state.clear()
     await reply_btn_icon_style(message)
+
+@router.message(Command("channels"))
+@router.message(Command("mychannels"))
+@router.message(Command("addedchannels"))
+async def cmd_user_channels(message: Message, state: FSMContext = None):
+    if state:
+        await state.clear()
+    from bot.handlers.user_channels import show_user_channels
+    await show_user_channels(message, message.bot, message.from_user.id, is_callback=False)
 
 @router.message(Command("language"))
 async def cmd_language(message: Message, state: FSMContext = None):
@@ -346,6 +419,19 @@ async def reply_btn_my_polls(message: Message, state: FSMContext = None):
         await state.clear()
     from bot.handlers.poll_manage import cmd_mypolls
     await cmd_mypolls(message, state)
+
+ADDED_CHANNELS_BUTTON_TEXTS = [
+    "📢 Added Channels", "📢 যুক্ত চ্যানেলসমূহ", "📢 যুক্ত চ্যানেল",
+    "📢 जुड़े हुए चैनल", "📢 القنوات المضافة", "📢 Добавленные каналы",
+    "Added Channels", "যুক্ত চ্যানেলসমূহ", "যুক্ত চ্যানেল"
+]
+
+@router.message(F.text.in_(ADDED_CHANNELS_BUTTON_TEXTS))
+async def reply_btn_added_channels(message: Message, state: FSMContext = None):
+    if state:
+        await state.clear()
+    from bot.handlers.user_channels import show_user_channels
+    await show_user_channels(message, message.bot, message.from_user.id, is_callback=False)
 
 @router.message(F.text.in_([
     "📢 Add Bot to Channel", "📢 চ্যানেলে যুক্ত করুন (১-ক্লিক)", "📢 चैनल में बॉट जोड़ें",

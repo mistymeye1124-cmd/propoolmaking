@@ -60,6 +60,43 @@ class TestCommandBreakoutAndCleanHome(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(handled)
         state.clear.assert_awaited_once()
 
+    async def test_reply_buttons_breakout_in_fsm(self):
+        """Test persistent reply menu button texts immediately break out of FSM."""
+        # 1. Start button
+        msg = AsyncMock()
+        msg.text = "Start / মূল মেনু"
+        msg.from_user.id = 12345
+        msg.from_user.full_name = "User One"
+        msg.from_user.first_name = "User"
+        msg.answer = AsyncMock()
+        msg.bot.get_me = AsyncMock(return_value=MagicMock(username="propollbot"))
+        state = AsyncMock()
+        handled = await check_command_breakout(msg, state)
+        self.assertTrue(handled)
+        state.clear.assert_awaited_once()
+
+        # 2. Added channels button
+        msg2 = AsyncMock()
+        msg2.text = "📢 Added Channels"
+        msg2.from_user.id = 12345
+        msg2.answer = AsyncMock()
+        msg2.bot.get_me = AsyncMock(return_value=MagicMock(username="propollbot"))
+        state2 = AsyncMock()
+        handled2 = await check_command_breakout(msg2, state2)
+        self.assertTrue(handled2)
+        state2.clear.assert_awaited_once()
+
+        # 3. Slash channels command
+        msg3 = AsyncMock()
+        msg3.text = "/channels"
+        msg3.from_user.id = 12345
+        msg3.answer = AsyncMock()
+        msg3.bot.get_me = AsyncMock(return_value=MagicMock(username="propollbot"))
+        state3 = AsyncMock()
+        handled3 = await check_command_breakout(msg3, state3)
+        self.assertTrue(handled3)
+        state3.clear.assert_awaited_once()
+
     async def test_per_user_my_polls_isolation(self):
         # Creator 1 creates a poll
         pid1 = await create_poll(12345, -100123, "Chan 1", "ch1", "Poll 1", ["Opt 1", "Opt 2"])
