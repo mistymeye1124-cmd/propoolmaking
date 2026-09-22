@@ -1858,69 +1858,50 @@ async def check_unprompted_candidate_paste(message: Message, state: FSMContext):
         await message.answer(guide_text, reply_markup=kb, parse_mode="HTML")
         return
 
-    last_poll = await get_last_user_poll(user_id)
+    # User sent 2 or more candidate names directly!
+    # Immediately save them and begin poll creation wizard at Title step!
+    CHUNK_SIZE = 29
+    chunks = [candidates[i:i + CHUNK_SIZE] for i in range(0, len(candidates), CHUNK_SIZE)]
+    await state.clear()
+    await state.update_data(
+        candidates=candidates,
+        candidate_chunks=chunks,
+        pasted_candidates=candidates
+    )
+    await state.set_state(PollCreationState.title)
 
-    if last_poll and last_poll["status"] == "active":
-        root_id = last_poll.get("parent_poll_id") or last_poll["poll_id"]
-        next_part = await get_next_part_number(root_id)
+    cancel_btn_text = "🔙 Cancel / বাতিল" if user_lang == "bn" else "🔙 Cancel"
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=cancel_btn_text, callback_data="cancel_publish")]
+    ])
 
-        await state.update_data(
-            pasted_candidates=candidates,
-            pasted_root_id=root_id,
-            pasted_next_part=next_part
+    if user_lang == "en":
+        prompt = (
+            f"💡 <b>{len(candidates)} candidate names detected & saved!</b>\n\n"
+            f'<tg-emoji emoji-id="{STEP1_TITLE_CUSTOM_EMOJI_ID}">📝</tg-emoji> <b>Step 1/4: Poll Title / পোলের শিরোনাম</b>\n'
+            f"Please enter the Title or Question for this poll / giveaway:\n"
+            f"<i>(Example: 🎉 Eid Mega Giveaway 2026: Vote Your Favorite Creator!)</i>\n\n"
+            f"To cancel, type /cancel or tap below:"
         )
-
-        btn_part = f"🚀 Publish as Part {next_part} / Part {next_part} হিসেবে পোস্ট" if user_lang == "bn" else f"🚀 Publish as Part {next_part} to Channel"
-        btn_new = "➕ Start as New Poll / নতুন পোল তৈরি" if user_lang == "bn" else "➕ Start as New Poll"
-        btn_dismiss = "❌ Dismiss / বাতিল" if user_lang == "bn" else "❌ Dismiss"
-
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=btn_part, callback_data=f"apply_paste_part:{root_id}")],
-            [InlineKeyboardButton(text=btn_new, callback_data="apply_paste_new")],
-            [InlineKeyboardButton(text=btn_dismiss, callback_data="apply_paste_dismiss")]
-        ])
-
-        base_title = get_base_title(last_poll["title"])
-        if user_lang == "en":
-            prompt = (
-                f"💡 <b>You sent {len(candidates)} candidate names!</b>\n\n"
-                f"Would you like to publish them as <b>Part {next_part}</b> for your active contest:\n"
-                f"📌 <b>{base_title}</b>\n"
-                f"📢 Channel: <b>{html.escape(last_poll.get('target_chat_title') or '')}</b>\n\n"
-                f"Or create a brand new poll?"
-            )
-        else:
-            prompt = (
-                f"💡 <b>আপনি {len(candidates)} জন প্রার্থীর নাম পাঠিয়েছেন!</b>\n\n"
-                f"আপনি কি এগুলো আপনার সাম্প্রতিক সক্রিয় কনটেস্ট:\n"
-                f"📌 <b>{base_title}</b> এর <b>Part {next_part} (পরবর্তী পর্ব)</b> হিসেবে সরাসরি একই চ্যানেলে পোস্ট করতে চান, নাকি নতুন পোল তৈরি করতে চান?"
-            )
-        await message.answer(prompt, reply_markup=kb, parse_mode="HTML")
     else:
-        await state.update_data(pasted_candidates=candidates)
-        btn_create = f"➕ Create New Poll ({len(candidates)} Candidates)" if user_lang == "en" else f"➕ এই {len(candidates)} জনের নাম দিয়ে পোল শুরু করুন"
-        btn_dismiss = "❌ Dismiss / বাতিল" if user_lang == "bn" else "❌ Dismiss"
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=btn_create, callback_data="apply_paste_new")],
-            [InlineKeyboardButton(text=btn_dismiss, callback_data="apply_paste_dismiss")]
-        ])
-        if user_lang == "en":
-            prompt = (
-                f"💡 <b>You sent {len(candidates)} candidate names!</b>\n\n"
-                f"Tap below to give this poll a Title and publish it to your channel:"
-            )
-        else:
-            prompt = (
-                f"💡 <b>আপনি {len(candidates)} জন প্রার্থীর নাম পাঠিয়েছেন!</b>\n\n"
-                f"নিচের বাটনে চাপ দিলে সরাসরি এই প্রার্থীদের জন্য একটি শিরোনাম (Title) দিয়ে পোল তৈরি করতে পারবেন:"
-            )
-        await message.answer(prompt, reply_markup=kb, parse_mode="HTML")
+        prompt = (
+            f"💡 <b>{len(candidates)} জন প্রার্থীর নাম পাওয়া গেছে এবং সংরক্ষিত হয়েছে!</b>\n\n"
+            f'<tg-emoji emoji-id="{STEP1_TITLE_CUSTOM_EMOJI_ID}">📝</tg-emoji> <b>ধাপ ১/৪: পোলের শিরোনাম / টাইটেল</b>\n'
+            f"এই পোলের জন্য একটি আকর্ষণীয় টাইটেল বা প্রশ্ন লিখে পাঠান:\n"
+            f"<i>(উদাহরণ: 🎉 ঈদ মেগা গিভঅ্যাওয়ে ২০২৬: পছন্দের ক্রিয়েটরকে ভোট দিন!)</i>\n\n"
+            f"বাতিল করতে /cancel লিখুন বা নিচের বাটনে চাপুন:"
+        )
+    await message.answer(prompt, reply_markup=cancel_kb, parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("apply_paste_part:"))
 async def cb_apply_paste_part(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     data = await state.get_data()
-    candidates = data.get("pasted_candidates")
+    candidates = data.get("pasted_candidates") or data.get("candidates")
     root_id = int(callback.data.split(":")[1])
     parent_poll = await get_poll(root_id)
     user_id = callback.from_user.id
@@ -2024,37 +2005,50 @@ async def cb_apply_paste_part(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "apply_paste_new")
 async def cb_apply_paste_new(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     data = await state.get_data()
-    candidates = data.get("pasted_candidates")
+    candidates = data.get("pasted_candidates") or data.get("candidates")
+    user_lang = await get_user_language(callback.from_user.id)
     if not candidates:
-        await callback.answer("Expired, please start /newpoll", show_alert=True)
+        await start_poll_wizard(callback.message, state)
         return
     await state.clear()
     CHUNK_SIZE = 29
     chunks = [candidates[i:i + CHUNK_SIZE] for i in range(0, len(candidates), CHUNK_SIZE)]
     await state.update_data(candidates=candidates, candidate_chunks=chunks)
     await state.set_state(PollCreationState.title)
-    user_lang = await get_user_language(callback.from_user.id)
+    cancel_btn_text = "🔙 Cancel / বাতিল" if user_lang == "bn" else "🔙 Cancel"
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=cancel_btn_text, callback_data="cancel_publish")]
+    ])
     if user_lang == "en":
         text = (
             f"📝 <b>Create New Poll ({len(candidates)} Candidates Saved)</b>\n\n"
             f"Enter the Title for this new poll / giveaway:\n\n"
-            f"Cancel: /cancel"
+            f"To cancel, type /cancel or tap below:"
         )
     else:
         text = (
             f"📝 <b>নতুন পোল তৈরি (মোট {len(candidates)} জনের নাম সংরক্ষিত)</b>\n\n"
             f"এই নতুন পোলের জন্য একটি আকর্ষণীয় টাইটেল বা শিরোনাম লিখে পাঠান:\n\n"
-            f"বাতিল করতে: /cancel"
+            f"বাতিল করতে /cancel লিখুন বা নিচের বাটনে চাপুন:"
         )
-    await callback.message.edit_text(text, parse_mode="HTML")
-    await callback.answer()
+    await callback.message.edit_text(text, reply_markup=cancel_kb, parse_mode="HTML")
 
 @router.callback_query(F.data == "apply_paste_dismiss")
 async def cb_apply_paste_dismiss(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     await state.clear()
-    await callback.message.delete()
-    await callback.answer()
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
 
 @router.callback_query(F.data == "cancel_publish")
 async def cancel_publish(callback: CallbackQuery, state: FSMContext):
