@@ -334,6 +334,10 @@ async def start_poll_wizard(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "menu_create_poll")
 async def cb_start_poll_wizard(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     await state.clear()
     await state.set_state(PollCreationState.title)
     user_lang = await get_user_language(callback.from_user.id)
@@ -352,7 +356,6 @@ async def cb_start_poll_wizard(callback: CallbackQuery, state: FSMContext):
         is_callback=True,
         parse_mode="HTML"
     )
-    await callback.answer()
 
 @router.message(Command("cancel"))
 async def cancel_wizard(message: Message, state: FSMContext):
@@ -399,6 +402,27 @@ async def process_title(message: Message, state: FSMContext):
     data = await state.get_data()
     # If candidates were already provided (e.g. from pasted candidates flow)
     if data.get("candidates"):
+        candidates = data["candidates"]
+        chunks = data.get("candidate_chunks") or [candidates]
+        if len(chunks) > 1:
+            if user_lang == "en":
+                chunk_summary = "\n".join([f"   • Part {i+1}: {len(ch)} candidates" for i, ch in enumerate(chunks)])
+                info_note = (
+                    f"💡 <b>Received {len(candidates)} candidates!</b>\n\n"
+                    f"Each poll comfortably fits up to 29 candidates. Your contest will be automatically published as <b>{len(chunks)} sequential parts</b>:\n"
+                    f"{chunk_summary}\n\n"
+                    f"All parts will be published consecutively in your channel under the same title with the same timer!"
+                )
+            else:
+                chunk_summary = "\n".join([f"   • পর্ব {i+1}: {len(ch)} জন" for i, ch in enumerate(chunks)])
+                info_note = (
+                    f"💡 <b>মোট {len(candidates)} জন প্রার্থীর নাম পাওয়া গেছে!</b>\n\n"
+                    f"প্রতিটি পোলে সর্বোচ্চ ২৯ জন সুন্দরভাবে সাজানো থাকে। আপনার এই কনটেস্টটি স্বয়ংক্রিয়ভাবে <b>{len(chunks)} টি পর্বে (Parts)</b> ভাগ হয়ে চ্যানেলে পরপর পোস্ট হবে:\n"
+                    f"{chunk_summary}\n\n"
+                    f"সবগুলো পর্ব একই শিরোনামে একই সময়সীমা অনুযায়ী চ্যানেলে একটার নিচে আরেকটা পাবলিশ হবে।"
+                )
+            await message.answer(info_note, parse_mode="HTML")
+
         await state.set_state(PollCreationState.channel)
         preselected_id = data.get("preselected_target_chat_id")
         if preselected_id:
@@ -952,11 +976,29 @@ def format_duration_label(seconds: int, lang: str = "bn") -> str:
         days = seconds // 86400
         return f"🗓️ {days} Days" if lang == "en" else f"🗓️ {days} দিন"
 
-@router.callback_query(PollCreationState.duration, F.data.startswith("dur:"))
+@router.callback_query(F.data.startswith("dur:"))
 async def cb_select_duration(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     seconds = int(callback.data.split(":")[1])
+    data = await state.get_data()
+    if not data.get("title") or not data.get("target_chat_id"):
+        user_lang = await get_user_language(callback.from_user.id)
+        bot_info = await callback.bot.get_me()
+        is_admin = callback.from_user.id in ADMIN_IDS
+        from bot.keyboards.inline import build_main_menu
+        await callback.message.answer(
+            "⚠️ <b>Session expired!</b> Please start fresh with /newpoll"
+            if user_lang == "en" else
+            "⚠️ <b>সেশনের সময় শেষ হয়েছে!</b> অনুগ্রহ করে /newpoll দিয়ে আবার শুরু করুন।",
+            reply_markup=build_main_menu(is_admin, bot_info.username, user_lang),
+            parse_mode="HTML"
+        )
+        await state.clear()
+        return
     await apply_duration(callback.from_user.id, seconds, state, callback.message, is_callback=True)
-    await callback.answer()
 
 @router.message(PollCreationState.duration)
 async def process_text_duration(message: Message, state: FSMContext):
@@ -1048,8 +1090,12 @@ async def apply_duration(user_id: int, seconds: int, state: FSMContext, msg_or_c
     else:
         await msg_or_cb.answer(prompt_w, reply_markup=kb, parse_mode="HTML")
 
-@router.callback_query(PollCreationState.winner_count, F.data.startswith("win_cnt:"))
+@router.callback_query(F.data.startswith("win_cnt:"))
 async def cb_select_winner_count(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     action = callback.data.split(":")[1]
     user_lang = await get_user_language(callback.from_user.id)
     if action == "custom":
@@ -1063,13 +1109,11 @@ async def cb_select_winner_count(callback: CallbackQuery, state: FSMContext):
             "বাতিল করতে: /cancel"
         )
         await callback.message.edit_text(msg, parse_mode="HTML")
-        await callback.answer()
         return
 
     count = int(action)
     await state.update_data(winner_count=count)
     await prompt_poll_language_step(callback.from_user.id, state, callback.message, is_callback=True)
-    await callback.answer()
 
 @router.message(PollCreationState.winner_count)
 async def process_text_winner_count(message: Message, state: FSMContext):
@@ -1117,12 +1161,15 @@ async def prompt_poll_language_step(user_id: int, state: FSMContext, msg_or_cb, 
     else:
         await msg_or_cb.answer(txt, reply_markup=kb, parse_mode="HTML")
 
-@router.callback_query(PollCreationState.poll_language, F.data.startswith("poll_lang:"))
+@router.callback_query(F.data.startswith("poll_lang:"))
 async def cb_select_poll_language(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     target_lang = callback.data.split(":")[1]
     await state.update_data(poll_language=target_lang)
     await prompt_giveaway_contact_step(callback.from_user.id, state, callback.message, is_callback=True, user=callback.from_user)
-    await callback.answer()
 
 async def prompt_giveaway_contact_step(user_id: int, state: FSMContext, msg_or_cb, is_callback: bool, user=None):
     await state.set_state(PollCreationState.contact_id)
@@ -1187,18 +1234,24 @@ async def prompt_giveaway_contact_step(user_id: int, state: FSMContext, msg_or_c
     else:
         await msg_or_cb.answer(txt, reply_markup=contact_kb, parse_mode="HTML")
 
-@router.callback_query(PollCreationState.contact_id, F.data.startswith("contact_self:"))
+@router.callback_query(F.data.startswith("contact_self:"))
 async def cb_contact_self(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     contact = callback.data.split(":", 1)[1]
     await state.update_data(contact_username=contact)
     from bot.database.db import set_user_default_contact
     await set_user_default_contact(callback.from_user.id, contact)
     await show_poll_preview(callback.from_user.id, state, callback.message, is_callback=True)
 
-@router.callback_query(PollCreationState.contact_id, F.data == "contact_skip")
+@router.callback_query(F.data == "contact_skip")
 async def cb_contact_skip(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     await state.update_data(contact_username="")
     await show_poll_preview(callback.from_user.id, state, callback.message, is_callback=True)
 
@@ -1312,9 +1365,28 @@ async def show_poll_preview(user_id: int, state: FSMContext, msg_or_cb, is_callb
         await safe_send_message(msg_or_cb.bot, msg_or_cb.chat.id, preview_text, reply_markup=confirm_kb, parse_mode="HTML")
 
 
-@router.callback_query(PollCreationState.confirm, F.data == "confirm_publish")
+@router.callback_query(F.data == "confirm_publish")
 async def publish_poll(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     data = await state.get_data()
+    if not data.get("title") or not data.get("candidates") or not data.get("target_chat_id"):
+        user_lang = await get_user_language(callback.from_user.id)
+        bot_info = await callback.bot.get_me()
+        is_admin = callback.from_user.id in ADMIN_IDS
+        from bot.keyboards.inline import build_main_menu
+        await callback.message.answer(
+            "⚠️ <b>Session expired!</b> Please start fresh with /newpoll"
+            if user_lang == "en" else
+            "⚠️ <b>সেশনের সময় শেষ হয়েছে!</b> অনুগ্রহ করে /newpoll দিয়ে আবার শুরু করুন।",
+            reply_markup=build_main_menu(is_admin, bot_info.username, user_lang),
+            parse_mode="HTML"
+        )
+        await state.clear()
+        return
+
     if data.get("_is_publishing"):
         await callback.answer(
             "⏳ Already publishing... Please wait! / ইতোমধ্যে পোস্ট করা হচ্ছে, দয়া করে অপেক্ষা করুন!",
@@ -1328,7 +1400,10 @@ async def publish_poll(callback: CallbackQuery, state: FSMContext):
         await callback.message.edit_reply_markup(reply_markup=None)
     except Exception:
         pass
-    await callback.answer("⏳ Publishing to channel... / চ্যানেলে পোস্ট হচ্ছে...")
+    try:
+        await callback.answer("⏳ Publishing to channel... / চ্যানেলে পোস্ট হচ্ছে...")
+    except Exception:
+        pass
 
     creator_id = callback.from_user.id
     target_chat_id = data["target_chat_id"]
