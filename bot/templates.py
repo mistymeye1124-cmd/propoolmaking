@@ -220,12 +220,12 @@ DEFAULTS_BN: Dict[str, str] = {
         "<i>শুরু করতে নিচের অপশন থেকে নির্বাচন করুন:</i>"
     ),
     "tpl_poll_card": (
-        "📊 <b>{title}</b>\n"
+        '<tg-emoji emoji-id="5202167764483076994">📊</tg-emoji> <b>{title}</b>\n'
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "🗳 <i>পছন্দের প্রার্থীকে ভোট দিতে নিচের বাটনে ক্লিক করুন:</i>\n\n"
-        "⚠️ <b>সতর্কতা:</b> ভোট দিতে হলে অবশ্যই আমাদের চ্যানেলে জয়েন থাকতে হবে!\n"
+        '<tg-emoji emoji-id="5837134496868077492">🗳️</tg-emoji> <i>পছন্দের প্রার্থীকে ভোট দিতে নিচের বাটনে ক্লিক করুন:</i>\n\n'
+        '⚠️ <b>সতর্কতা:</b> ভোট দিতে হলে অবশ্যই আমাদের চ্যানেলে জয়েন থাকতে হবে!\n'
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "⚡ <b>Powered by:</b> {bot_username}"
+        '<tg-emoji emoji-id="6271459718896554468">⚡</tg-emoji> <b>Powered by:</b> {bot_username}'
     ),
     "tpl_poll_cta": (
         "⚡ নিজের চ্যানেলের জন্য পোল তৈরি করুন ➔"
@@ -238,35 +238,35 @@ DEFAULTS_BN: Dict[str, str] = {
         "✅ '{candidate}' এর জন্য আপনার ভোট সফলভাবে গ্রহণ করা হয়েছে!"
     ),
     "tpl_poll_ended": (
-        "🏁 <b>{title}</b>\n"
+        '<tg-emoji emoji-id="5204244329631082615">🏁</tg-emoji> <b>{title}</b>\n'
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "🏆 <b>পোল সমাপ্ত হয়েছে!</b>\n\n"
+        '<tg-emoji emoji-id="5226431245918942763">🏆</tg-emoji> <b>পোল সমাপ্ত হয়েছে!</b>\n\n'
         "{winner}\n"
-        "🗳️ <b>সর্বমোট কাস্ট করা ভোট:</b> <code>{votes}</code>\n"
+        '<tg-emoji emoji-id="5837134496868077492">🗳️</tg-emoji> <b>সর্বমোট কাস্ট করা ভোট:</b> <code>{votes}</code>\n'
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "🎉 অংশগ্রহণকারী সবাইকে ধন্যবাদ!\n"
-        "⚡ <b>Powered by:</b> {bot_username}"
+        '<tg-emoji emoji-id="6179411633371095707">🎉</tg-emoji> অংশগ্রহণকারী সবাইকে ধন্যবাদ!\n'
+        '<tg-emoji emoji-id="6271459718896554468">⚡</tg-emoji> <b>Powered by:</b> {bot_username}'
     ),
     "tpl_winner_announcement": (
-        "🏆 <b>অফিসিয়াল বিজয়ী ঘোষণা</b>\n"
+        '<tg-emoji emoji-id="5226431245918942763">🏆</tg-emoji> <b>অফিসিয়াল বিজয়ী ঘোষণা</b>\n'
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "📌 <b>{title}</b>\n\n"
+        '📌 <b>{title}</b>\n\n'
         "{winners}\n\n"
         "{stats}\n\n"
         "{claim_info}\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "🎉 <i>কনটেস্টে অংশগ্রহণকারী এবং ভোট প্রদানকারী সবাইকে ধন্যবাদ!</i>\n"
-        "⚡ <b>Powered by:</b> {bot_username}"
+        '<tg-emoji emoji-id="6179411633371095707">🎉</tg-emoji> <i>কনটেস্টে অংশগ্রহণকারী এবং ভোট প্রদানকারী সবাইকে ধন্যবাদ!</i>\n'
+        '<tg-emoji emoji-id="6271459718896554468">⚡</tg-emoji> <b>Powered by:</b> {bot_username}'
     ),
     "tpl_prize_claim": (
-        "🎁 <b>পুরস্কার দাবি ও যোগাযোগ / Prize Claim:</b>\n"
-        "📩 <i>বিজয়ীগণ আপনার পুরস্কার ক্লেইম করতে নিম্নের হোস্ট এডমিনের সাথে যোগাযোগ করুন:</i>\n"
-        "👉 <b>Giveaway Host:</b> {contact_link}"
+        '<tg-emoji emoji-id="6271494293383286950">🎁</tg-emoji> <b>পুরস্কার দাবি ও যোগাযোগ / Prize Claim:</b>\n'
+        '<tg-emoji emoji-id="5292109589456645419">📩</tg-emoji> <i>বিজয়ীগণ আপনার পুরস্কার ক্লেইম করতে নিম্নের হোস্ট এডমিনের সাথে যোগাযোগ করুন:</i>\n'
+        '👉 <b>Giveaway Host:</b> {contact_link}'
     ),
     "tpl_anti_cheat_badge": (
-        "📊 <b>কনটেস্ট পরিসংখ্যান:</b>\n"
-        "🗳️ <b>সর্বমোট কাস্ট করা ভোট:</b> <code>{total_votes}</code> টি\n"
-        "🛡️ <b>অ্যান্টি-চিট স্ট্যাটাস:</b> ১০০% ভেরিফাইড ও নিরপেক্ষ"
+        '<tg-emoji emoji-id="5202167764483076994">📊</tg-emoji> <b>কনটেস্ট পরিসংখ্যান:</b>\n'
+        '<tg-emoji emoji-id="5837134496868077492">🗳️</tg-emoji> <b>সর্বমোট কাস্ট করা ভোট:</b> <code>{total_votes}</code> টি\n'
+        '<tg-emoji emoji-id="6050646916109179497">🛡️</tg-emoji> <b>অ্যান্টি-চিট স্ট্যাটাস:</b> ১০০% ভেরিফাইড ও নিরপেক্ষ'
     ),
     "tpl_help": (
         '<tg-emoji emoji-id="5373098009640836781">📖</tg-emoji> <b>বট ব্যবহারের সম্পূর্ণ নিয়মাবলী ও গাইড (Complete Bot Guide & Instructions)</b>\n'
@@ -330,12 +330,12 @@ DEFAULTS_EN: Dict[str, str] = {
         "<i>Select an option below to get started:</i>"
     ),
     "tpl_poll_card": (
-        "📊 <b>{title}</b>\n"
+        '<tg-emoji emoji-id="5202167764483076994">📊</tg-emoji> <b>{title}</b>\n'
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "🗳 <i>Tap a button below to cast your vote:</i>\n\n"
-        "⚠️ <b>Note:</b> You must be a member of this channel to vote.\n"
+        '<tg-emoji emoji-id="5837134496868077492">🗳️</tg-emoji> <i>Tap a button below to cast your vote:</i>\n\n'
+        '⚠️ <b>Note:</b> You must be a member of this channel to vote.\n'
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "⚡ <b>Powered by:</b> {bot_username}"
+        '<tg-emoji emoji-id="6271459718896554468">⚡</tg-emoji> <b>Powered by:</b> {bot_username}'
     ),
     "tpl_poll_cta": (
         "⚡ Create Your Own Poll ➔"
@@ -348,35 +348,35 @@ DEFAULTS_EN: Dict[str, str] = {
         "✅ Vote cast successfully for '{candidate}'!"
     ),
     "tpl_poll_ended": (
-        "🏁 <b>{title}</b>\n"
+        '<tg-emoji emoji-id="5204244329631082615">🏁</tg-emoji> <b>{title}</b>\n'
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "🏆 <b>POLL ENDED!</b>\n\n"
+        '<tg-emoji emoji-id="5226431245918942763">🏆</tg-emoji> <b>POLL ENDED!</b>\n\n'
         "{winner}\n"
-        "🗳️ <b>Total Votes Cast:</b> <code>{votes}</code>\n"
+        '<tg-emoji emoji-id="5837134496868077492">🗳️</tg-emoji> <b>Total Votes Cast:</b> <code>{votes}</code>\n'
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "🎉 Thank you all for participating!\n"
-        "⚡ <b>Powered by:</b> {bot_username}"
+        '<tg-emoji emoji-id="6179411633371095707">🎉</tg-emoji> Thank you all for participating!\n'
+        '<tg-emoji emoji-id="6271459718896554468">⚡</tg-emoji> <b>Powered by:</b> {bot_username}'
     ),
     "tpl_winner_announcement": (
-        "🏆 <b>OFFICIAL WINNERS ANNOUNCEMENT</b>\n"
+        '<tg-emoji emoji-id="5226431245918942763">🏆</tg-emoji> <b>OFFICIAL WINNERS ANNOUNCEMENT</b>\n'
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "📌 <b>{title}</b>\n\n"
+        '📌 <b>{title}</b>\n\n'
         "{winners}\n\n"
         "{stats}\n\n"
         "{claim_info}\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "🎉 <i>Thank you to everyone who participated!</i>\n"
-        "⚡ <b>Powered by:</b> {bot_username}"
+        '<tg-emoji emoji-id="6179411633371095707">🎉</tg-emoji> <i>Thank you to everyone who participated!</i>\n'
+        '<tg-emoji emoji-id="6271459718896554468">⚡</tg-emoji> <b>Powered by:</b> {bot_username}'
     ),
     "tpl_prize_claim": (
-        "🎁 <b>Prize Claim Information:</b>\n"
-        "📩 <i>Winners must contact the host to claim reward:</i>\n"
-        "👉 <b>Official Host:</b> {contact_link}"
+        '<tg-emoji emoji-id="6271494293383286950">🎁</tg-emoji> <b>Prize Claim Information:</b>\n'
+        '<tg-emoji emoji-id="5292109589456645419">📩</tg-emoji> <i>Winners must contact the host to claim reward:</i>\n'
+        '👉 <b>Official Host:</b> {contact_link}'
     ),
     "tpl_anti_cheat_badge": (
-        "📊 <b>Contest Statistics:</b>\n"
-        "🗳️ <b>Total Verified Votes:</b> <code>{total_votes}</code>\n"
-        "🛡️ <b>Anti-Cheat Status:</b> 100% Verified & Validated"
+        '<tg-emoji emoji-id="5202167764483076994">📊</tg-emoji> <b>Contest Statistics:</b>\n'
+        '<tg-emoji emoji-id="5837134496868077492">🗳️</tg-emoji> <b>Total Verified Votes:</b> <code>{total_votes}</code>\n'
+        '<tg-emoji emoji-id="6050646916109179497">🛡️</tg-emoji> <b>Anti-Cheat Status:</b> 100% Verified & Validated'
     ),
     "tpl_help": (
         '<tg-emoji emoji-id="5373098009640836781">📖</tg-emoji> <b>Complete Bot Guide & Instructions</b>\n'
@@ -1216,45 +1216,51 @@ def format_timer_badge(ends_at: Optional[str], lang: str = "bn", created_at: Opt
     start_str = format_datetime_readable(created_at) if created_at else ""
     end_str = format_datetime_readable(ends_at) if ends_at else ""
 
+    t_icon = '<tg-emoji emoji-id="5399850755337240950">⏱️</tg-emoji>'
+    g_icon = '<tg-emoji emoji-id="5395542928909150340">🟢</tg-emoji>'
+    r_icon = '<tg-emoji emoji-id="5136918320674505825">🔴</tg-emoji>'
+    f_icon = '<tg-emoji emoji-id="5204244329631082615">🏁</tg-emoji>'
+    h_icon = '<tg-emoji emoji-id="5399850755337240950">⏳</tg-emoji>'
+
     if ends_at:
         if lang == "bn":
             if start_str:
                 return (
-                    f"⏱️ <b>ভোটিং সময়সূচি:</b>\n"
-                    f"🟢 <b>শুরু:</b> <code>{start_str}</code>\n"
-                    f"🔴 <b>শেষ:</b> <code>{end_str}</code>"
+                    f"{t_icon} <b>ভোটিং সময়সূচি:</b>\n"
+                    f"{g_icon} <b>শুরু:</b> <code>{start_str}</code>\n"
+                    f"{r_icon} <b>শেষ:</b> <code>{end_str}</code>"
                 )
             else:
-                return f"⏳ <b>ভোটের শেষ সময়:</b> <code>{end_str}</code>"
+                return f"{h_icon} <b>ভোটের শেষ সময়:</b> <code>{end_str}</code>"
         else:
             if start_str:
                 return (
-                    f"⏱️ <b>Voting Schedule:</b>\n"
-                    f"🟢 <b>Start:</b> <code>{start_str}</code>\n"
-                    f"🔴 <b>End:</b> <code>{end_str}</code>"
+                    f"{t_icon} <b>Voting Schedule:</b>\n"
+                    f"{g_icon} <b>Start:</b> <code>{start_str}</code>\n"
+                    f"{r_icon} <b>End:</b> <code>{end_str}</code>"
                 )
             else:
-                return f"⏳ <b>Poll Deadline:</b> <code>{end_str}</code>"
+                return f"{h_icon} <b>Poll Deadline:</b> <code>{end_str}</code>"
     else:
         # Manual closure (No timer)
         if lang == "bn":
             if start_str:
                 return (
-                    f"⏱️ <b>ভোটিং সময়সূচি:</b>\n"
-                    f"🟢 <b>শুরু:</b> <code>{start_str}</code>\n"
-                    f"♾️ <b>সমাপ্তি:</b> <code>ম্যানুয়াল সমাপ্তি</code>"
+                    f"{t_icon} <b>ভোটিং সময়সূচি:</b>\n"
+                    f"{g_icon} <b>শুরু:</b> <code>{start_str}</code>\n"
+                    f"{f_icon} <b>সমাপ্তি:</b> <code>ম্যানুয়াল সমাপ্তি</code>"
                 )
             else:
-                return "⏱️ <b>সময়সীমা:</b> ♾️ <code>ম্যানুয়াল সমাপ্তি</code>"
+                return f"{t_icon} <b>সময়সীমা:</b> ♾️ <code>ম্যানুয়াল সমাপ্তি</code>"
         else:
             if start_str:
                 return (
-                    f"⏱️ <b>Voting Schedule:</b>\n"
-                    f"🟢 <b>Start:</b> <code>{start_str}</code>\n"
-                    f"♾️ <b>End:</b> <code>Manual Closure</code>"
+                    f"{t_icon} <b>Voting Schedule:</b>\n"
+                    f"{g_icon} <b>Start:</b> <code>{start_str}</code>\n"
+                    f"{f_icon} <b>End:</b> <code>Manual Closure</code>"
                 )
             else:
-                return "⏱️ <b>Schedule:</b> ♾️ <code>Manual Closure</code>"
+                return f"{t_icon} <b>Schedule:</b> ♾️ <code>Manual Closure</code>"
 
 def to_bengali_num(n: Any) -> str:
     bn_digits = "০১২৩৪৫৬৭৮৯"
@@ -1300,19 +1306,20 @@ async def render_poll_card(
 
     # Winner badge
     winner_badge = ""
+    trophy_icon = '<tg-emoji emoji-id="5226431245918942763">🏆</tg-emoji>'
     if winner_count > 1:
         if lang == "en":
-            winner_badge = f"🏆 <b>Winner Announcement:</b> Top {winner_count} Winners"
+            winner_badge = f"{trophy_icon} <b>Winner Announcement:</b> Top {winner_count} Winners"
         elif lang == "hi":
             hi_n = to_hindi_num(winner_count)
-            winner_badge = f"🏆 <b>विजेता घोषणा:</b> शीर्ष {hi_n} विजेता (Top {winner_count} Winners)"
+            winner_badge = f"{trophy_icon} <b>विजेता घोषणा:</b> शीर्ष {hi_n} विजेता (Top {winner_count} Winners)"
         elif lang == "ar":
-            winner_badge = f"🏆 <b>الفائزون:</b> أفضل {winner_count} فائزين (Top {winner_count} Winners)"
+            winner_badge = f"{trophy_icon} <b>الفائزون:</b> أفضل {winner_count} فائزين (Top {winner_count} Winners)"
         elif lang == "ru":
-            winner_badge = f"🏆 <b>Победители:</b> Топ-{winner_count} участников"
+            winner_badge = f"{trophy_icon} <b>Победители:</b> Топ-{winner_count} участников"
         else:
             bn_n = to_bengali_num(winner_count)
-            winner_badge = f"🏆 <b>বিজয়ী ঘোষণা:</b> শীর্ষ {bn_n} জন (Top {winner_count} Winners)"
+            winner_badge = f"{trophy_icon} <b>বিজয়ী ঘোষণা:</b> শীর্ষ {bn_n} জন (Top {winner_count} Winners)"
 
     timer_line = format_timer_badge(ends_at, lang=lang, created_at=created_at)
 
@@ -1389,18 +1396,24 @@ async def render_poll_ended(
 
     start_str = format_datetime_readable(created_at) if created_at else ""
     end_str = format_datetime_readable(ended_at) if ended_at else ""
+    t_icon = '<tg-emoji emoji-id="5399850755337240950">⏱️</tg-emoji>'
+    g_icon = '<tg-emoji emoji-id="5395542928909150340">🟢</tg-emoji>'
+    f_icon = '<tg-emoji emoji-id="5204244329631082615">🏁</tg-emoji>'
+    mail_icon = '<tg-emoji emoji-id="5292109589456645419">📩</tg-emoji>'
+    rocket_icon = '<tg-emoji emoji-id="5445118546700954082">🚀</tg-emoji>'
+
     if start_str and end_str:
         lbl = "সময়সীমা" if lang == "bn" else ("समय सीमा" if lang == "hi" else "Timeline")
         start_lbl = "শুরু" if lang == "bn" else ("प्रारंभ" if lang == "hi" else "Start")
         end_lbl = "সমাপ্তি" if lang == "bn" else ("समाप्त" if lang == "hi" else "Ended")
         timeline_line = (
-            f"⏱️ <b>{lbl}:</b>\n"
-            f"🟢 <b>{start_lbl}:</b> <code>{start_str}</code>\n"
-            f"🏁 <b>{end_lbl}:</b> <code>{end_str}</code>"
+            f"{t_icon} <b>{lbl}:</b>\n"
+            f"{g_icon} <b>{start_lbl}:</b> <code>{start_str}</code>\n"
+            f"{f_icon} <b>{end_lbl}:</b> <code>{end_str}</code>"
         )
     elif end_str:
         lbl = "সমাপ্তির সময়" if lang == "bn" else ("समाप्ति समय" if lang == "hi" else "Ended At")
-        timeline_line = f"🏁 <b>{lbl}:</b> <code>{end_str}</code>"
+        timeline_line = f"{f_icon} <b>{lbl}:</b> <code>{end_str}</code>"
     else:
         timeline_line = ""
 
@@ -1420,19 +1433,19 @@ async def render_poll_ended(
         else:
             c_link = f'<a href="https://t.me/{c_raw}">@{c_raw}</a>'
         c_lbl = "Giveaway Host" if lang == "en" else ("गिवअवे होस्ट" if lang == "hi" else "গিভওয়ে হোস্ট")
-        contact_line = f"📩 <b>{c_lbl}:</b> {c_link}"
+        contact_line = f"{mail_icon} <b>{c_lbl}:</b> {c_link}"
     elif creator_id:
         c_link = f'<a href="tg://user?id={creator_id}">ID: {creator_id}</a>'
         c_lbl = "Giveaway Host" if lang == "en" else ("गिवअवे होस्ट" if lang == "hi" else "গিভওয়ে হোস্ট")
-        contact_line = f"📩 <b>{c_lbl}:</b> {c_link}"
+        contact_line = f"{mail_icon} <b>{c_lbl}:</b> {c_link}"
 
     # Bot viral promotional invite line
     if lang == "hi":
-        promo_line = f"🚀 <b>अपने चैनल के लिए ऐसा पोल बनाने के लिए जुड़ें:</b> @{clean_user}"
+        promo_line = f"{rocket_icon} <b>अपने चैनल के लिए ऐसा पोल बनाने के लिए जुड़ें:</b> @{clean_user}"
     elif lang == "en":
-        promo_line = f"🚀 <b>To create viral polls like this for your channel, join:</b> @{clean_user}"
+        promo_line = f"{rocket_icon} <b>To create viral polls like this for your channel, join:</b> @{clean_user}"
     else:
-        promo_line = f"🚀 <b>নিজের চ্যানেলের জন্য এমন পোল তৈরি করতে যুক্ত করুন:</b> @{clean_user}"
+        promo_line = f"{rocket_icon} <b>নিজের চ্যানেলের জন্য এমন পোল তৈরি করতে যুক্ত করুন:</b> @{clean_user}"
 
     middle_parts = []
     if contact_line:
@@ -1464,18 +1477,28 @@ async def render_poll_ended(
 def format_winners_display(top_winners: List[Dict[str, Any]], lang: str = "bn") -> str:
     """
     Renders top winners formatted strictly descending from MAX votes to LOW votes.
+    Supports Telegram Premium Custom Emojis (<tg-emoji> tags).
     """
+    crown_icon = '<tg-emoji emoji-id="6235252066554484059">👑</tg-emoji>'
+    trophy_icon = '<tg-emoji emoji-id="5226431245918942763">🏆</tg-emoji>'
+    party_icon = '<tg-emoji emoji-id="6179411633371095707">🎉</tg-emoji>'
+    gold_icon = '<tg-emoji emoji-id="5226431245918942763">🥇</tg-emoji>'
+    silver_icon = '<tg-emoji emoji-id="6181535395914718008">🥈</tg-emoji>'
+    bronze_icon = '<tg-emoji emoji-id="5348084369217052513">🥉</tg-emoji>'
+    medal_icon = '<tg-emoji emoji-id="6181535395914718008">🏅</tg-emoji>'
+    star_icon = '<tg-emoji emoji-id="6181535395914718008">🎖️</tg-emoji>'
+
     if not top_winners:
         if lang == "en":
-            return "👑 <b>No winner determined</b> (0 votes cast)."
+            return f"{crown_icon} <b>No winner determined</b> (0 votes cast)."
         elif lang == "hi":
-            return "👑 <b>कोई विजेता नहीं चुना गया</b> (0 वोट प्राप्त)।"
+            return f"{crown_icon} <b>कोई विजेता नहीं चुना गया</b> (0 वोट प्राप्त)।"
         elif lang == "ar":
-            return "👑 <b>لم يتم تحديد فائز</b> (0 أصوات)."
+            return f"{crown_icon} <b>لم يتم تحديد فائز</b> (0 أصوات)."
         elif lang == "ru":
-            return "👑 <b>Победитель не определен</b> (0 голосов)."
+            return f"{crown_icon} <b>Победитель не определен</b> (0 голосов)."
         else:
-            return "👑 <b>কোনো বিজয়ী নির্ধারিত হয়নি</b> (কোনো ভোট পড়েনি)।"
+            return f"{crown_icon} <b>কোনো বিজয়ী নির্ধারিত হয়নি</b> (কোনো ভোট পড়েনি)।"
 
     # Strictly sort candidates descending: MAX votes -> LOW votes
     sorted_winners = sorted(
@@ -1484,22 +1507,22 @@ def format_winners_display(top_winners: List[Dict[str, Any]], lang: str = "bn") 
         reverse=True
     )
 
-    medals = ["🥇", "🥈", "🥉", "🏅", "🎖️"]
+    medals = [gold_icon, silver_icon, bronze_icon, medal_icon, star_icon]
     lines = []
     if len(sorted_winners) > 1:
         if lang == "en":
-            lines.append(f"🏆 <b>Top {len(sorted_winners)} Contest Winners (Ranked Max to Low):</b>")
+            lines.append(f"{trophy_icon} <b>Top {len(sorted_winners)} Contest Winners (Ranked Max to Low):</b>")
         elif lang == "hi":
-            lines.append(f"🏆 <b>शीर्ष {len(sorted_winners)} विजेता (अधिकतम से न्यूनतम):</b>")
+            lines.append(f"{trophy_icon} <b>शीर्ष {len(sorted_winners)} विजेता (अधिकतम से न्यूनतम):</b>")
         elif lang == "ar":
-            lines.append(f"🏆 <b>أفضل {len(sorted_winners)} فائزين (من الأعلى إلى الأدنى):</b>")
+            lines.append(f"{trophy_icon} <b>أفضل {len(sorted_winners)} فائزين (من الأعلى إلى الأدنى):</b>")
         elif lang == "ru":
-            lines.append(f"🏆 <b>Топ-{len(sorted_winners)} победителей (по убыванию):</b>")
+            lines.append(f"{trophy_icon} <b>Топ-{len(sorted_winners)} победителей (по убыванию):</b>")
         else:
-            lines.append(f"🏆 <b>কনটেস্টের শীর্ষ {len(sorted_winners)} জন বিজয়ী (সর্বোচ্চ থেকে ক্রমানুসারে):</b>")
+            lines.append(f"{trophy_icon} <b>কনটেস্টের শীর্ষ {len(sorted_winners)} জন বিজয়ী (সর্বোচ্চ থেকে ক্রমানুসারে):</b>")
 
         for idx, w in enumerate(sorted_winners):
-            medal = medals[idx] if idx < len(medals) else "🎖️"
+            medal = medals[idx] if idx < len(medals) else star_icon
             name = safe_html_preserve_tg_emoji(w["name"])
             votes = w.get("votes_count", w.get("votes", 0))
             if lang == "en":
@@ -1515,11 +1538,11 @@ def format_winners_display(top_winners: List[Dict[str, Any]], lang: str = "bn") 
                 lines.append(f"{medal} <b>{idx+1}ম স্থান:</b> {name} (<code>{votes}</code> ভোট)")
 
         congrats = (
-            "🎉 <i>Congratulations to all winners!</i>"
+            f"{party_icon} <i>Congratulations to all winners!</i>"
             if lang == "en" else (
-                "🎉 <i>सभी विजेताओं को हार्दिक बधाई!</i>"
+                f"{party_icon} <i>सभी विजेताओं को हार्दिक बधाई!</i>"
                 if lang == "hi" else
-                "🎉 <i>অভিনন্দন সকল বিজয়ীদের!</i>"
+                f"{party_icon} <i>অভিনন্দন সকল বিজয়ীদের!</i>"
             )
         )
         lines.append(congrats)
@@ -1531,28 +1554,28 @@ def format_winners_display(top_winners: List[Dict[str, Any]], lang: str = "bn") 
         if lang == "en":
             v_label = "vote" if votes == 1 else "votes"
             return (
-                f"👑 <b>#1 Winner:</b> {name} (<code>{votes}</code> {v_label})\n"
-                f"🎉 Congratulations to the top winner!"
+                f"{crown_icon} <b>#1 Winner:</b> {name} (<code>{votes}</code> {v_label})\n"
+                f"{party_icon} Congratulations to the top winner!"
             )
         elif lang == "hi":
             return (
-                f"👑 <b>#1 विजेता:</b> {name} (<code>{votes}</code> वोट)\n"
-                f"🎉 शीर्ष विजेता को हार्दिक बधाई!"
+                f"{crown_icon} <b>#1 विजेता:</b> {name} (<code>{votes}</code> वोट)\n"
+                f"{party_icon} शीर्ष विजेता को हार्दिक बधाई!"
             )
         elif lang == "ar":
             return (
-                f"👑 <b>#1 الفائز:</b> {name} (<code>{votes}</code> أصوات)\n"
-                f"🎉 مبروك للفائز بالمركز الأول!"
+                f"{crown_icon} <b>#1 الفائز:</b> {name} (<code>{votes}</code> أصوات)\n"
+                f"{party_icon} مبروك للفائز بالمركز الأول!"
             )
         elif lang == "ru":
             return (
-                f"👑 <b>#1 Победитель:</b> {name} (<code>{votes}</code> голосов)\n"
-                f"🎉 Поздравляем главного победителя!"
+                f"{crown_icon} <b>#1 Победитель:</b> {name} (<code>{votes}</code> голосов)\n"
+                f"{party_icon} Поздравляем главного победителя!"
             )
         else:
             return (
-                f"👑 <b>১ম বিজয়ী:</b> {name} (<code>{votes}</code> ভোট)\n"
-                f"🎉 অভিনন্দন সর্বোচ্চ ভোটপ্রাপ্ত ক্রিয়েটরকে!"
+                f"{crown_icon} <b>১ম বিজয়ী:</b> {name} (<code>{votes}</code> ভোট)\n"
+                f"{party_icon} অভিনন্দন সর্বোচ্চ ভোটপ্রাপ্ত ক্রিয়েটরকে!"
             )
 
 

@@ -592,7 +592,7 @@ async def cb_user_set_icon_style(callback: CallbackQuery):
         await callback.message.edit_text(txt, reply_markup=kb, parse_mode="HTML")
     except Exception:
         await callback.message.answer(txt, reply_markup=kb, parse_mode="HTML")
-    await callback.answer()
+
 
 @router.callback_query(F.data == "noop")
 async def cb_noop(callback: CallbackQuery):

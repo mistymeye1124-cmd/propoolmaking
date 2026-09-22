@@ -1493,7 +1493,8 @@ async def publish_poll(callback: CallbackQuery, state: FSMContext):
             real_candidates = await get_candidates(poll_id)
             poll_kb = build_poll_keyboard(poll_id, real_candidates, bot_info.username, cta_text=cta_text, cta_url=cta_url, icon_style=icon_style)
 
-            sent_msg = await bot.send_message(
+            sent_msg = await safe_send_message(
+                bot=bot,
                 chat_id=target_chat_id,
                 text=channel_msg_text,
                 reply_markup=poll_kb,
@@ -1593,7 +1594,8 @@ async def publish_poll(callback: CallbackQuery, state: FSMContext):
             cands1 = await get_candidates(part1_id)
             kb1 = build_poll_keyboard(part1_id, cands1, bot_info.username, cta_text=cta_text, cta_url=cta_url, icon_style=icon_style)
 
-            msg1 = await bot.send_message(
+            msg1 = await safe_send_message(
+                bot=bot,
                 chat_id=target_chat_id,
                 text=card1_text,
                 reply_markup=kb1,

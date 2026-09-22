@@ -33,7 +33,7 @@ from bot.database.db import (
     update_poll_contact, get_user_default_contact, set_user_default_contact
 )
 from bot.templates import (
-    render_poll_cta, render_poll_card, format_timer_badge,
+    render_poll_cta, render_poll_card, render_poll_ended, format_timer_badge,
     render_winner_announcement, render_custom_winner_announcement,
     strip_tg_emoji_tags, format_winners_display,
     TEMPLATE_KEYS, DEFAULTS_BN, DEFAULTS_EN, get_raw_template,
@@ -151,8 +151,8 @@ async def run_tests():
     created_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     card_with_timer = await render_poll_card("Active Timer Poll", "mybot", lang="bn", ends_at=future_time, created_at=created_now)
     assert "ভোটিং সময়সূচি:" in card_with_timer
-    assert "🟢 <b>শুরু:</b>" in card_with_timer
-    assert "🔴 <b>শেষ:</b>" in card_with_timer
+    assert "🟢" in card_with_timer and "<b>শুরু:</b>" in card_with_timer
+    assert "🔴" in card_with_timer and "<b>শেষ:</b>" in card_with_timer
     print("[SUCCESS] Poll card renders Start Time - End Time schedule badge correctly.")
 
     # 3. Create a poll with NO timer (Manual End)
@@ -175,8 +175,8 @@ async def run_tests():
 
     # Verify manual end poll card shows Start and Manual End
     card_manual = await render_poll_card("Manual Poll", "mybot", lang="bn", ends_at=None, created_at=created_now)
-    assert "🟢 <b>শুরু:</b>" in card_manual
-    assert "♾️ <b>সমাপ্তি:</b> <code>ম্যানুয়াল সমাপ্তি</code>" in card_manual
+    assert "🟢" in card_manual and "<b>শুরু:</b>" in card_manual
+    assert "<b>সমাপ্তি:</b> <code>ম্যানুয়াল সমাপ্তি</code>" in card_manual
     print("[SUCCESS] Manual poll card renders Start Time and Manual closure badge correctly.")
 
     # Manual end poll
@@ -949,6 +949,74 @@ async def run_tests():
     assert "tpl_view:tpl_vote_btn_format" in menu_callbacks
 
     print("[SUCCESS] A-to-Z Bot Buttons & Telegram Premium Custom Emojis verified 100%!")
+
+    print("[TEST] Channel Giveaway Poll Premium Custom Emoji Support & Closed State Theme Preservation...")
+
+    # 1. Closed Poll Keyboard Button Theme Preservation (Image 1 fix)
+    test_cands = [
+        {"candidate_id": 1, "name": "Candidate 1", "votes_count": 5},
+        {"candidate_id": 2, "name": "Candidate 2", "votes_count": 0},
+        {"candidate_id": 3, "name": "Candidate 3", "votes_count": 0},
+    ]
+    # In closed poll with diamond style:
+    # Winner gets 🏆 with trophy custom emoji ID
+    icon_w, emoji_w = resolve_candidate_icon_and_emoji(test_cands[0], test_cands, style="diamond", is_closed=True)
+    assert icon_w == "🏆 "
+    assert emoji_w == "5226431245918942763"
+
+    # Non-winner MUST NOT get 🗳️, but retain 💎 with diamond custom emoji ID
+    icon_nw, emoji_nw = resolve_candidate_icon_and_emoji(test_cands[1], test_cands, style="diamond", is_closed=True)
+    assert icon_nw == "💎 ", f"Expected 💎 , got {repr(icon_nw)}"
+    assert emoji_nw == "6271494293383286950"
+
+    # In closed poll with zap style:
+    icon_zap, emoji_zap = resolve_candidate_icon_and_emoji(test_cands[2], test_cands, style="zap", is_closed=True)
+    assert icon_zap == "⚡ "
+    assert emoji_zap == "6271459718896554468"
+
+    # Build closed poll keyboard with diamond theme
+    kb_closed = build_poll_keyboard(1234, test_cands, "mybot", is_closed=True, icon_style="diamond")
+    btn_w = kb_closed.inline_keyboard[0][0]
+    btn_nw = kb_closed.inline_keyboard[0][1]
+    assert "🏆 Candidate 1 • 5" in btn_w.text
+    assert btn_w.icon_custom_emoji_id == "5226431245918942763"
+    assert "💎 Candidate 2 • 0" in btn_nw.text, f"Expected 💎 in button text, got {btn_nw.text}"
+    assert btn_nw.icon_custom_emoji_id == "6271494293383286950"
+
+    # 2. Message Cards Telegram Premium Emojis
+    # format_winners_display
+    w_disp = format_winners_display([
+        {"name": "Winner One", "votes_count": 10},
+        {"name": "Winner Two", "votes_count": 5}
+    ], lang="bn")
+    assert '<tg-emoji emoji-id="5226431245918942763">🥇</tg-emoji>' in w_disp
+    assert '<tg-emoji emoji-id="6181535395914718008">🥈</tg-emoji>' in w_disp
+    assert '<tg-emoji emoji-id="6179411633371095707">🎉</tg-emoji>' in w_disp
+
+    # format_timer_badge
+    t_badge = format_timer_badge("2026-10-01 12:00:00", lang="bn", created_at="2026-09-22 12:00:00")
+    assert '<tg-emoji emoji-id="5399850755337240950">⏱️</tg-emoji>' in t_badge
+    assert '<tg-emoji emoji-id="5395542928909150340">🟢</tg-emoji>' in t_badge
+    assert '<tg-emoji emoji-id="5136918320674505825">🔴</tg-emoji>' in t_badge
+
+    # render_poll_ended
+    ended_txt = await render_poll_ended(
+        title="Eid Giveaway 2026",
+        winner=w_disp,
+        votes=15,
+        bot_username="ProPoolMaking_bot",
+        lang="bn",
+        created_at="2026-09-22 12:00:00",
+        ended_at="2026-09-22 13:00:00",
+        contact_username="agent_vip"
+    )
+    assert '<tg-emoji emoji-id="5204244329631082615">🏁</tg-emoji>' in ended_txt
+    assert '<tg-emoji emoji-id="5226431245918942763">🏆</tg-emoji>' in ended_txt
+    assert '<tg-emoji emoji-id="5292109589456645419">📩</tg-emoji>' in ended_txt
+    assert '<tg-emoji emoji-id="5445118546700954082">🚀</tg-emoji>' in ended_txt
+    assert '<tg-emoji emoji-id="6271459718896554468">⚡</tg-emoji>' in ended_txt
+
+    print("[SUCCESS] Channel Giveaway Poll Premium Custom Emoji Support & Closed State Theme Preservation verified 100%!")
 
     print("\nALL MULTI-LANGUAGE, TOP N WINNERS, PER-USER ICONS, BRAND CREDIT, STICKY MENU, CHANNEL ISOLATION & CONTACT ID TESTS PASSED 1000% PERFECTLY!")
 

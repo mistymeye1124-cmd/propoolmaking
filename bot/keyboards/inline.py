@@ -38,7 +38,7 @@ def get_candidate_icon(
                 return "🥉 "
             elif votes > 0:
                 return "🔥 "
-        return "🗳️ "
+        # For non-winning or zero-vote candidates, fall through to preserve chosen style (e.g. 💎, ⚡, ⭐, etc.)
 
     if style == "dynamic":
         max_votes = max((c.get("votes_count", 0) for c in all_candidates), default=0)
@@ -154,8 +154,31 @@ def resolve_candidate_icon_and_emoji(
     Returns: (icon_str, custom_emoji_id_or_none)
     """
     icon_text = get_candidate_icon(cand, all_candidates, style=style, is_closed=is_closed)
+    
+    # 1. Closed Poll winner custom emoji IDs
+    if is_closed:
+        if icon_text == "🏆 ":
+            return icon_text, "5226431245918942763"
+        elif icon_text == "🥈 ":
+            return icon_text, "6181535395914718008"
+        elif icon_text == "🥉 ":
+            return icon_text, "5348084369217052513"
+        elif icon_text == "🔥 ":
+            return icon_text, "5136918320674505825"
+
     custom_emoji_id = None
-    if style.startswith("custom_tg:"):
+    if style == "dynamic":
+        if icon_text == "👑 ":
+            custom_emoji_id = "6235252066554484059"
+        elif icon_text == "🥈 ":
+            custom_emoji_id = "6181535395914718008"
+        elif icon_text == "🥉 ":
+            custom_emoji_id = "5348084369217052513"
+        elif icon_text == "🔥 ":
+            custom_emoji_id = "5136918320674505825"
+        else:
+            custom_emoji_id = "5837134496868077492"
+    elif style.startswith("custom_tg:"):
         parts = style.split(":")
         if len(parts) > 1 and parts[1].isdigit():
             custom_emoji_id = parts[1]
@@ -301,7 +324,7 @@ def build_poll_keyboard(
         InlineKeyboardButton(
             text=clean_cta_label or button_label,
             url=final_url,
-            icon_custom_emoji_id=cta_emoji_id
+            icon_custom_emoji_id=cta_emoji_id or "6271459718896554468"
         )
     ])
 
