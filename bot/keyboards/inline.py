@@ -460,10 +460,12 @@ def build_poll_manage_keyboard(
     """
     buttons = []
     if is_active:
-        add_part_text = "➕ Add Next Part (More Candidates)" if lang == "en" else "➕ পরবর্তী পর্ব যোগ করুন (আরো নাম)"
+        add_cands_text = "➕ Add Candidates / নাম যোগ" if lang == "bn" else "➕ Add Candidates"
+        add_part_text = "📑 Next Part / পরবর্তী পর্ব" if lang == "bn" else "📑 Next Part"
         end_text = "🏁 End Poll & Announce Winner" if lang == "en" else "🏁 পোল সমাপ্ত ও বিজয়ী ঘোষণা"
 
         buttons.append([
+            InlineKeyboardButton(text=add_cands_text, callback_data=f"add_cands:{poll_id}"),
             InlineKeyboardButton(text=add_part_text, callback_data=f"add_part:{poll_id}")
         ])
 

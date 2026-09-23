@@ -30,7 +30,8 @@ from bot.database.db import (
     get_all_channels_with_status, delete_channel, get_expired_active_polls,
     set_user_custom_credit, get_effective_credit,
     get_user_selectable_channels, is_user_authorized_for_channel_db, record_user_channel_access,
-    update_poll_contact, get_user_default_contact, set_user_default_contact
+    update_poll_contact, get_user_default_contact, set_user_default_contact,
+    add_candidates_to_poll
 )
 from bot.templates import (
     render_poll_cta, render_poll_card, render_poll_ended, format_timer_badge,
@@ -1017,6 +1018,48 @@ async def run_tests():
     assert '<tg-emoji emoji-id="6271459718896554468">⚡</tg-emoji>' in ended_txt
 
     print("[SUCCESS] Channel Giveaway Poll Premium Custom Emoji Support & Closed State Theme Preservation verified 100%!")
+
+    print("[TEST] Live In-Place Candidate Addition to Active Poll...")
+    p_dyn = await create_poll(
+        creator_id=12345678,
+        target_chat_id=-100111222333,
+        target_chat_title="Dynamic Channel",
+        target_chat_username="dynchan",
+        title="Day 1 Giveaway",
+        candidates=["Alpha", "Beta"]
+    )
+    cands_init = await get_candidates(p_dyn)
+    assert len(cands_init) == 2
+    # Vote for Alpha
+    await cast_vote(p_dyn, cands_init[0]["candidate_id"], 5555)
+
+    # Day 2: add Gamma and Delta
+    new_ids = await add_candidates_to_poll(p_dyn, ["Gamma", "Delta"])
+    assert len(new_ids) == 2
+
+    cands_updated = await get_candidates(p_dyn)
+    assert len(cands_updated) == 4
+    # Ensure Alpha's vote was not lost!
+    assert cands_updated[0]["votes_count"] == 1
+    assert cands_updated[2]["name"] == "Gamma" and cands_updated[2]["votes_count"] == 0
+    assert cands_updated[3]["name"] == "Delta" and cands_updated[3]["votes_count"] == 0
+
+    # Build updated poll keyboard
+    kb_updated = build_poll_keyboard(p_dyn, cands_updated, "ProPoolMaking_bot")
+    # Verify buttons exist for all 4 candidates
+    kb_texts = [btn.text for row in kb_updated.inline_keyboard for btn in row]
+    assert any("Alpha" in t for t in kb_texts)
+    assert any("Gamma" in t for t in kb_texts)
+    assert any("Delta" in t for t in kb_texts)
+
+    # Verify build_poll_manage_keyboard has add_cands button
+    from bot.keyboards.inline import build_poll_manage_keyboard
+    manage_kb = build_poll_manage_keyboard(p_dyn, is_active=True, lang="bn")
+    manage_cbs = [btn.callback_data for row in manage_kb.inline_keyboard for btn in row if btn.callback_data]
+    assert f"add_cands:{p_dyn}" in manage_cbs
+    assert f"add_part:{p_dyn}" in manage_cbs
+
+    print("[SUCCESS] Live In-Place Candidate Addition to Active Poll verified 100%!")
 
     print("\nALL MULTI-LANGUAGE, TOP N WINNERS, PER-USER ICONS, BRAND CREDIT, STICKY MENU, CHANNEL ISOLATION & CONTACT ID TESTS PASSED 1000% PERFECTLY!")
 

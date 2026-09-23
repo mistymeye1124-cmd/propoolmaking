@@ -379,6 +379,24 @@ async def create_poll(creator_id: int, target_chat_id: int, target_chat_title: s
         await db.commit()
         return poll_id
 
+async def add_candidates_to_poll(poll_id: int, candidate_names: List[str]) -> List[int]:
+    """
+    Appends new candidates to an existing live poll.
+    Returns the list of newly created candidate IDs.
+    """
+    inserted_ids = []
+    async with get_db() as db:
+        for name in candidate_names:
+            clean_name = name.strip()
+            if clean_name:
+                cursor = await db.execute("""
+                    INSERT INTO candidates (poll_id, name, votes_count)
+                    VALUES (?, ?, 0)
+                """, (poll_id, clean_name))
+                inserted_ids.append(cursor.lastrowid)
+        await db.commit()
+    return inserted_ids
+
 async def update_poll_contact(poll_id: int, contact_username: str):
     contact_clean = contact_username.strip().lstrip("@") if contact_username else ""
     async with get_db() as db:

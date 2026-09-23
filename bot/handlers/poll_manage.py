@@ -8,7 +8,7 @@ from bot.config import ADMIN_IDS
 from bot.database.db import (
     get_user_polls, get_poll, get_candidates, end_poll, get_user_language,
     get_button_icon_style, get_poll_parts, update_poll_contact, set_user_default_contact,
-    delete_poll_by_id, delete_user_ended_polls
+    delete_poll_by_id, delete_user_ended_polls, add_candidates_to_poll, get_user_icon_style
 )
 from bot.keyboards.inline import (
     build_poll_manage_keyboard, build_poll_keyboard,
@@ -28,6 +28,7 @@ _announcing_polls = set()
 
 class PollManagementState(StatesGroup):
     waiting_for_contact = State()
+    waiting_for_new_candidates = State()
 
 class WinnerAnnouncementState(StatesGroup):
     waiting_for_custom_text = State()
@@ -801,6 +802,218 @@ async def process_poll_contact_text(message: Message, state: FSMContext):
         [InlineKeyboardButton(text="🔙 My Polls / আমার পোল", callback_data="menu_my_polls")]
     ])
     await message.answer(confirm_msg, reply_markup=back_kb, parse_mode="HTML")
+
+# --- Add Candidates to Active Live Poll ---
+
+@router.callback_query(F.data.startswith("add_cands:"))
+async def cb_add_candidates_start(callback: CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    lang = await get_user_language(user_id)
+    poll_id = int(callback.data.split(":")[1])
+    poll = await get_poll(poll_id)
+    if not poll or (poll["creator_id"] != user_id and user_id not in ADMIN_IDS):
+        err = "Poll not found or no permission!" if lang == "en" else "পোলটি পাওয়া যায়নি বা দেখার অনুমতি নেই!"
+        await callback.answer(err, show_alert=True)
+        return
+
+    if poll["status"] != "active":
+        err = "This poll has already ended!" if lang == "en" else "এই পোলটি ইতিমধ্যে সমাপ্ত হয়েছে!"
+        await callback.answer(err, show_alert=True)
+        return
+
+    existing_candidates = await get_candidates(poll_id)
+    current_count = len(existing_candidates)
+    remaining_slots = max(0, 29 - current_count)
+
+    await state.clear()
+    await state.set_state(PollManagementState.waiting_for_new_candidates)
+    await state.update_data(target_add_poll_id=poll_id)
+
+    cancel_btn_text = "🔙 Cancel & Back / ফিরে যান" if lang == "bn" else "🔙 Cancel & Back"
+    cancel_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=cancel_btn_text, callback_data=f"view_poll:{poll_id}")]
+    ])
+
+    clean_title = strip_tg_emoji_tags(poll.get("title") or "")
+    if lang == "en":
+        prompt = (
+            f"➕ <b>Add Candidates to Live Poll (#{poll_id})</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"📌 <b>Title:</b> {clean_title}\n"
+            f"📢 <b>Channel:</b> {html.escape(poll.get('target_chat_title') or 'Channel')}\n"
+            f"👥 <b>Current Candidates:</b> {current_count} (Max 29 per post)\n"
+            f"✨ <b>Available Slots in this post:</b> {remaining_slots}\n\n"
+            f"Send the new candidate names (one per line or comma-separated):\n"
+            f"<i>Example:</i>\n"
+            f"<code>Candidate {current_count + 1}\nCandidate {current_count + 2}</code>\n\n"
+            f"💡 <i>These candidates will be immediately added as voting buttons to your live channel post! Previous votes remain 100% safe.</i>\n\n"
+            f"To cancel, tap below or type /cancel"
+        )
+    else:
+        prompt = (
+            f"➕ <b>চলমান পোলে নতুন প্রার্থী যোগ (#{poll_id})</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"📌 <b>শিরোনাম:</b> {clean_title}\n"
+            f"📢 <b>চ্যানেল:</b> {html.escape(poll.get('target_chat_title') or 'Channel')}\n"
+            f"👥 <b>বর্তমান প্রার্থী সংখ্যা:</b> {current_count} জন (পোস্টে সর্বোচ্চ ২৯ জন)\n"
+            f"✨ <b>এই পোস্টে খালি স্লট:</b> {remaining_slots} টি\n\n"
+            f"নতুন প্রার্থীদের নাম লিখে পাঠান (প্রতি লাইনে একটি করে অথবা কমা দিয়ে):\n"
+            f"<i>উদাহরণ:</i>\n"
+            f"<code>Candidate {current_count + 1}\nCandidate {current_count + 2}</code>\n\n"
+            f"💡 <i>নামগুলো পাঠানো মাত্রই চ্যানেলের লাইভ পোস্টে নতুন বাটন হিসেবে যুক্ত হয়ে যাবে! আগের কোনো ভোট নষ্ট হবে না।</i>\n\n"
+            f"বাতিল করতে নিচের বাটনে চাপুন বা /cancel লিখুন।"
+        )
+
+    await callback.message.edit_text(prompt, reply_markup=cancel_kb, parse_mode="HTML")
+    await callback.answer()
+
+@router.message(PollManagementState.waiting_for_new_candidates)
+async def process_add_candidates(message: Message, state: FSMContext):
+    from bot.handlers.poll_create import check_command_breakout
+    if await check_command_breakout(message, state):
+        return
+
+    data = await state.get_data()
+    poll_id = data.get("target_add_poll_id")
+    if not poll_id:
+        await state.clear()
+        await message.answer("⚠️ Session expired. Please open /mypolls again.")
+        return
+
+    poll = await get_poll(poll_id)
+    if not poll or poll["status"] != "active":
+        await state.clear()
+        await message.answer("⚠️ Poll is no longer active.")
+        return
+
+    raw_text = (message.text or "").strip()
+    if not raw_text:
+        await message.answer("⚠️ Please send valid candidate names / অনুগ্রহ করে সঠিক নাম পাঠান:")
+        return
+
+    if "\n" in raw_text:
+        new_names = [n.strip() for n in raw_text.split("\n") if n.strip()]
+    else:
+        new_names = [n.strip() for n in raw_text.split(",") if n.strip()]
+
+    if not new_names:
+        await message.answer("⚠️ No names found. Please send at least 1 candidate name.")
+        return
+
+    user_id = message.from_user.id
+    lang = await get_user_language(user_id)
+    existing_candidates = await get_candidates(poll_id)
+    current_count = len(existing_candidates)
+    existing_names_lower = {c["name"].lower() for c in existing_candidates}
+
+    unique_new = []
+    for n in new_names:
+        if n.lower() not in existing_names_lower and n.lower() not in [x.lower() for x in unique_new]:
+            unique_new.append(n)
+
+    if not unique_new:
+        msg = "⚠️ All provided names already exist in this poll!" if lang == "en" else "⚠️ এই নামগুলো ইতিমধ্যে এই পোলে যুক্ত আছে!"
+        await message.answer(msg)
+        return
+
+    available_slots = max(0, 29 - current_count)
+    to_add = unique_new[:available_slots]
+    overflow = unique_new[available_slots:]
+
+    if not to_add:
+        msg = (
+            f"⚠️ <b>This post has reached its limit of 29 candidates!</b>\n\n"
+            f"You have {len(unique_new)} new candidates. Please use <b>📑 Next Part</b> to publish them as Part 2 in the same channel."
+            if lang == "en" else
+            f"⚠️ <b>এই পোস্টটিতে সর্বোচ্চ ২৯ জন প্রার্থীর জায়গা পূর্ণ হয়ে গেছে!</b>\n\n"
+            f"আপনার {len(unique_new)} জন নতুন প্রার্থী রয়েছে। একই চ্যানেলে এগুলো পর্ব ২ (Part 2) হিসেবে দিতে <b>📑 পরবর্তী পর্ব</b> বাটনটি ব্যবহার করুন।"
+        )
+        back_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📑 Next Part / পরবর্তী পর্ব", callback_data=f"add_part:{poll_id}")],
+            [InlineKeyboardButton(text="🔙 Back to Poll", callback_data=f"view_poll:{poll_id}")]
+        ])
+        await state.clear()
+        await message.answer(msg, reply_markup=back_kb, parse_mode="HTML")
+        return
+
+    await add_candidates_to_poll(poll_id, to_add)
+
+    all_candidates = await get_candidates(poll_id)
+
+    bot = message.bot
+    bot_info = await bot.get_me()
+    poll_lang = poll.get("language") or lang
+    icon_style = poll.get("icon_style") or await get_user_icon_style(poll["creator_id"])
+    cta_text, cta_url = await render_poll_cta(bot_info.username, lang=poll_lang, creator_id=poll["creator_id"])
+
+    new_poll_kb = build_poll_keyboard(
+        poll_id,
+        all_candidates,
+        bot_info.username,
+        cta_text=cta_text,
+        cta_url=cta_url,
+        icon_style=icon_style
+    )
+
+    card_text = await render_poll_card(
+        poll["title"],
+        bot_info.username,
+        lang=poll_lang,
+        ends_at=poll.get("ends_at"),
+        created_at=poll.get("created_at"),
+        winner_count=poll.get("winner_count") or 1,
+        creator_id=poll["creator_id"]
+    )
+
+    channel_updated = False
+    if poll.get("target_chat_id") and poll.get("channel_message_id"):
+        try:
+            await safe_bot_edit_message(
+                bot,
+                poll["target_chat_id"],
+                poll["channel_message_id"],
+                text=card_text,
+                reply_markup=new_poll_kb
+            )
+            channel_updated = True
+        except Exception:
+            pass
+
+    await state.clear()
+
+    added_list_str = "\n".join([f"   • {html.escape(n)}" for n in to_add])
+    overflow_note = ""
+    if overflow:
+        overflow_note = (
+            f"\n\n⚠️ <i>Note: Post reached 29 candidates. {len(overflow)} remaining candidates were not added. Tap '📑 Next Part' below to publish Part 2.</i>"
+            if lang == "en" else
+            f"\n\n⚠️ <i>বিঃদ্রঃ পোস্টে ২৯ জন পূর্ণ হওয়ায় বাকি {len(overflow)} জন যোগ হয়নি। তাদের পর্ব ২ হিসেবে দিতে নিচে '📑 পরবর্তী পর্ব' চাপুন।</i>"
+        )
+
+    view_btn_text = "📊 View Poll / পোল দেখুন" if lang == "bn" else "📊 View Poll"
+    btn_row = [InlineKeyboardButton(text=view_btn_text, callback_data=f"view_poll:{poll_id}")]
+    if overflow:
+        btn_row.append(InlineKeyboardButton(text="📑 Next Part", callback_data=f"add_part:{poll_id}"))
+    success_kb = InlineKeyboardMarkup(inline_keyboard=[btn_row])
+
+    if lang == "en":
+        confirm_text = (
+            f"✅ <b>Successfully added {len(to_add)} new candidate(s)!</b>\n\n"
+            f"📋 <b>Newly Added:</b>\n{added_list_str}\n\n"
+            f"👥 <b>Total Candidates now:</b> {len(all_candidates)}\n"
+            f"📢 <b>Live Channel Post:</b> {'Updated with new voting buttons! ✅' if channel_updated else 'Saved in DB'}"
+            f"{overflow_note}"
+        )
+    else:
+        confirm_text = (
+            f"✅ <b>সফলভাবে {len(to_add)} জন নতুন প্রার্থী যোগ করা হয়েছে!</b>\n\n"
+            f"📋 <b>নতুন যুক্ত প্রার্থীরা:</b>\n{added_list_str}\n\n"
+            f"👥 <b>বর্তমানে সর্বমোট প্রার্থী:</b> {len(all_candidates)} জন\n"
+            f"📢 <b>চ্যানেলের পোস্ট:</b> {'সরাসরি নতুন বাটনসহ লাইভ আপডেট হয়েছে! ✅' if channel_updated else 'ডাটাবেসে সংরক্ষিত'}"
+            f"{overflow_note}"
+        )
+
+    await message.answer(confirm_text, reply_markup=success_kb, parse_mode="HTML")
 
 @router.callback_query(F.data.startswith("del_poll_ask:"))
 async def cb_del_poll_ask(callback: CallbackQuery):
