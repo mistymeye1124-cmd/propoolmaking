@@ -193,6 +193,7 @@ MY_POLLS_CUSTOM_EMOJI_ID = "6269397073737553354"
 BUTTON_ICONS_CUSTOM_EMOJI_ID = "5201762530023733712"
 LANGUAGE_CUSTOM_EMOJI_ID = "5397798946380721942"
 HELP_CUSTOM_EMOJI_ID = "5373098009640836781"
+ADMIN_CUSTOM_EMOJI_ID = "6235252066554484059"  # Verified Animated Telegram Premium Crown 👑
 START_MENU_CUSTOM_EMOJI_ID = "5323642109767460983"
 STEP1_TITLE_CUSTOM_EMOJI_ID = "5197269100878907942"
 STEP2_CANDIDATES_CUSTOM_EMOJI_ID = "5292109589456645419"
@@ -362,7 +363,7 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
         ]
         keyboard = [row for row in keyboard if row]
         if is_admin:
-            keyboard.append([make_custom_button(text="👑 Super Admin Panel", callback_data="menu_admin")])
+            keyboard.append([make_custom_button(text="👑 Super Admin Panel", callback_data="menu_admin", custom_emoji_id=ADMIN_CUSTOM_EMOJI_ID)])
     elif lang == "hi":
         keyboard = [
             [make_custom_button(text="नया पोल बनाएं", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
@@ -382,7 +383,7 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
         ]
         keyboard = [row for row in keyboard if row]
         if is_admin:
-            keyboard.append([make_custom_button(text="👑 सुपर एडमिन पैनल", callback_data="menu_admin")])
+            keyboard.append([make_custom_button(text="👑 सुपर एडमिन पैनल", callback_data="menu_admin", custom_emoji_id=ADMIN_CUSTOM_EMOJI_ID)])
     elif lang == "ar":
         keyboard = [
             [make_custom_button(text="إنشاء استطلاع جديد", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
@@ -402,7 +403,7 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
         ]
         keyboard = [row for row in keyboard if row]
         if is_admin:
-            keyboard.append([make_custom_button(text="👑 لوحة تحكم المشرف", callback_data="menu_admin")])
+            keyboard.append([make_custom_button(text="👑 لوحة تحكم المشرف", callback_data="menu_admin", custom_emoji_id=ADMIN_CUSTOM_EMOJI_ID)])
     elif lang == "ru":
         keyboard = [
             [make_custom_button(text="Создать новый опрос", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
@@ -422,7 +423,7 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
         ]
         keyboard = [row for row in keyboard if row]
         if is_admin:
-            keyboard.append([make_custom_button(text="👑 Панель супер-админа", callback_data="menu_admin")])
+            keyboard.append([make_custom_button(text="👑 Панель супер-админа", callback_data="menu_admin", custom_emoji_id=ADMIN_CUSTOM_EMOJI_ID)])
     else:
         keyboard = [
             [make_custom_button(text="নতুন পোল তৈরি করুন", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
@@ -442,7 +443,7 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
         ]
         keyboard = [row for row in keyboard if row]
         if is_admin:
-            keyboard.append([make_custom_button(text="👑 এডমিন প্যানেল [গোপন]", callback_data="menu_admin")])
+            keyboard.append([make_custom_button(text="👑 এডমিন প্যানেল [গোপন]", callback_data="menu_admin", custom_emoji_id=ADMIN_CUSTOM_EMOJI_ID)])
             
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
