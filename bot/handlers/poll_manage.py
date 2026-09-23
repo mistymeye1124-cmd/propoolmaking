@@ -8,8 +8,10 @@ from bot.config import ADMIN_IDS
 from bot.database.db import (
     get_user_polls, get_poll, get_candidates, end_poll, get_user_language,
     get_button_icon_style, get_poll_parts, update_poll_contact, set_user_default_contact,
-    delete_poll_by_id, delete_user_ended_polls, add_candidates_to_poll, get_user_icon_style
+    delete_poll_by_id, delete_user_ended_polls, add_candidates_to_poll, get_user_icon_style,
+    get_multi_part_aggregated_results
 )
+from bot.handlers.poll_create import get_base_title
 from bot.keyboards.inline import (
     build_poll_manage_keyboard, build_poll_keyboard,
     build_winner_announcement_choice_keyboard,
@@ -225,10 +227,9 @@ async def cb_view_poll(callback: CallbackQuery):
     await callback.answer()
 
 @router.callback_query(F.data.startswith("end_poll:"))
-async def cb_end_poll(callback: CallbackQuery):
+async def _handle_end_poll_unified(callback: CallbackQuery, poll_id: int):
     user_id = callback.from_user.id
     lang = await get_user_language(user_id)
-    poll_id = int(callback.data.split(":")[1])
     poll = await get_poll(poll_id)
 
     if not poll or (poll["creator_id"] != user_id and user_id not in ADMIN_IDS):
@@ -236,7 +237,10 @@ async def cb_end_poll(callback: CallbackQuery):
         await callback.answer(msg, show_alert=True)
         return
 
-    if poll["status"] != "active":
+    parts = await get_poll_parts(poll_id)
+    is_multi_part = len(parts) > 1
+    any_active = any(p.get("status") == "active" for p in parts)
+    if not any_active and poll.get("status") != "active":
         msg = "Poll is already ended!" if lang == "en" else "পোলটি ইতোমধ্যে সমাপ্ত করা হয়েছে!"
         await callback.answer(msg, show_alert=True)
         return
@@ -245,60 +249,105 @@ async def cb_end_poll(callback: CallbackQuery):
         await callback.message.edit_reply_markup(reply_markup=None)
     except Exception:
         pass
-    await callback.answer("⏳ Ending poll... / পোল সমাপ্ত করা হচ্ছে...")
+    await callback.answer("⏳ Ending contest... / পোল সমাপ্ত করা হচ্ছে...")
 
-    poll_data = await end_poll(poll_id)
+    # Close all active connected parts simultaneously
+    for p in parts:
+        if p.get("status") == "active":
+            await end_poll(p["poll_id"])
+
     bot = callback.bot
     bot_info = await bot.get_me()
 
-    candidates = poll_data.get("candidates", [])
-    winner = poll_data.get("winner")
-    top_winners = poll_data.get("top_winners") or ([winner] if winner and winner.get('votes_count', 0) > 0 else [])
-    total_votes = sum(c["votes_count"] for c in candidates)
+    if is_multi_part:
+        agg = await get_multi_part_aggregated_results(poll_id)
+        top_winners = agg.get("top_winners", [])
+        total_votes = agg.get("total_votes", 0)
+        base_title = get_base_title(poll["title"])
+    else:
+        poll_data = await get_poll(poll_id)
+        candidates = await get_candidates(poll_id)
+        w_count = int(poll.get("winner_count") or 1)
+        voted = [c for c in candidates if c.get("votes_count", 0) > 0]
+        top_winners = voted[:w_count] if voted else candidates[:w_count]
+        total_votes = sum(c.get("votes_count", 0) for c in candidates)
+        base_title = poll["title"]
 
-    winner_text = format_winners_display(top_winners, lang=lang)
+    winner_text = format_winners_display(top_winners, lang=lang, is_multi_part=is_multi_part)
     channel_lang = poll.get("language") or lang
-    winner_text_channel = format_winners_display(top_winners, lang=channel_lang)
 
-    # 1. Update Channel Message to closed state
-    if poll.get("channel_message_id") and poll.get("target_chat_id"):
-        try:
-            cta_text, cta_url = await render_poll_cta(bot_info.username, lang=channel_lang, creator_id=user_id)
-            icon_style = poll.get("icon_style") or await get_button_icon_style()
-            closed_kb = build_poll_keyboard(poll_id, candidates, bot_info.username, is_closed=True, cta_text=cta_text, cta_url=cta_url, icon_style=icon_style)
-            results_channel_text = await render_poll_ended(
-                title=poll['title'],
-                winner=winner_text_channel,
-                votes=total_votes,
-                bot_username=bot_info.username,
-                lang=channel_lang,
-                created_at=poll.get("created_at"),
-                ended_at=poll_data.get("ended_at"),
-                creator_id=user_id,
-                contact_username=poll.get("contact_username")
-            )
-            await safe_bot_edit_message(
-                bot=bot,
-                chat_id=poll["target_chat_id"],
-                message_id=poll["channel_message_id"],
-                text=results_channel_text,
-                reply_markup=closed_kb,
-                parse_mode="HTML",
-                disable_web_page_preview=True
-            )
-        except Exception:
-            pass
+    # 1. Update Channel Message to closed state for ALL connected parts
+    for p in parts:
+        if p.get("channel_message_id") and p.get("target_chat_id"):
+            try:
+                p_cands = await get_candidates(p["poll_id"])
+                p_chan_lang = p.get("language") or channel_lang
+                p_winner_text = format_winners_display(top_winners, lang=p_chan_lang, is_multi_part=is_multi_part)
+                cta_text, cta_url = await render_poll_cta(bot_info.username, lang=p_chan_lang, creator_id=user_id)
+                icon_style = p.get("icon_style") or await get_button_icon_style()
+                closed_kb = build_poll_keyboard(
+                    poll_id=p["poll_id"],
+                    candidates=p_cands,
+                    bot_username=bot_info.username,
+                    is_closed=True,
+                    cta_text=cta_text,
+                    cta_url=cta_url,
+                    icon_style=icon_style
+                )
+                results_channel_text = await render_poll_ended(
+                    title=p['title'],
+                    winner=p_winner_text,
+                    votes=total_votes,
+                    bot_username=bot_info.username,
+                    lang=p_chan_lang,
+                    created_at=p.get("created_at"),
+                    ended_at=p.get("ended_at"),
+                    creator_id=user_id,
+                    contact_username=p.get("contact_username") or poll.get("contact_username")
+                )
+                await safe_bot_edit_message(
+                    bot=bot,
+                    chat_id=p["target_chat_id"],
+                    message_id=p["channel_message_id"],
+                    text=results_channel_text,
+                    reply_markup=closed_kb,
+                    parse_mode="HTML",
+                    disable_web_page_preview=True
+                )
+            except Exception:
+                pass
 
     # 2. Ask Creator whether to send Auto Winner list, Custom announcement, or Skip
     channel_name = html.escape(poll.get('target_chat_title') or 'Your Channel')
+    if is_multi_part:
+        if lang == "en":
+            header_status = f"🏆 <b>Contest Ended Successfully! (All {len(parts)} connected parts closed together)</b>"
+            vote_label = "Total Combined Votes"
+        elif lang == "hi":
+            header_status = f"🏆 <b>प्रतियोगिता सफलतापूर्वक समाप्त! (सभी {len(parts)} भाग एक साथ बंद)</b>"
+            vote_label = "कुल संयुक्त वोट"
+        else:
+            header_status = f"🏆 <b>কনটেস্ট সফলভাবে সমাপ্ত হয়েছে! (সকল {len(parts)}টি পর্ব একসাথে ক্লোজ করা হয়েছে)</b>"
+            vote_label = "সর্বমোট সম্মিলিত ভোট"
+    else:
+        if lang == "en":
+            header_status = f"🏆 <b>Poll #{poll_id} Ended Successfully!</b>"
+            vote_label = "Total Votes"
+        elif lang == "hi":
+            header_status = f"🏆 <b>पोल #{poll_id} सफलतापूर्वक समाप्त हुआ!</b>"
+            vote_label = "कुल वोट"
+        else:
+            header_status = f"🏆 <b>পোল #{poll_id} সফলভাবে সমাপ্ত হয়েছে!</b>"
+            vote_label = "সর্বমোট ভোট"
+
     if lang == "en":
         prompt_text = (
-            f"🏆 <b>Poll #{poll_id} Ended Successfully!</b>\n"
+            f"{header_status}\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📌 <b>Title:</b> {html.escape(poll['title'])}\n"
+            f"📌 <b>Title:</b> {html.escape(base_title)}\n"
             f"📢 <b>Channel:</b> {channel_name}\n\n"
             f"{winner_text}\n\n"
-            f"🗳️ <b>Total Votes:</b> <code>{total_votes}</code>\n"
+            f"🗳️ <b>{vote_label}:</b> <code>{total_votes}</code>\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"📢 <b>Would you like to post a winner announcement to the channel?</b>\n\n"
             f"• <b>Auto Announcement:</b> Bot sends official winner list with medals.\n"
@@ -306,12 +355,12 @@ async def cb_end_poll(callback: CallbackQuery):
         )
     elif lang == "hi":
         prompt_text = (
-            f"🏆 <b>पोल #{poll_id} सफलतापूर्वक समाप्त हुआ!</b>\n"
+            f"{header_status}\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📌 <b>शीर्षक:</b> {html.escape(poll['title'])}\n"
+            f"📌 <b>शीर्षक:</b> {html.escape(base_title)}\n"
             f"📢 <b>चैनल:</b> {channel_name}\n\n"
             f"{winner_text}\n\n"
-            f"🗳️ <b>कुल वोट:</b> <code>{total_votes}</code>\n"
+            f"🗳️ <b>{vote_label}:</b> <code>{total_votes}</code>\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"📢 <b>क्या आप चैनल में विजेता घोषणा भेजना चाहते हैं?</b>\n\n"
             f"• <b>ऑटो घोषणा:</b> बॉट सीधे मेडल और नामों के साथ पोस्ट भेजेगा।\n"
@@ -319,12 +368,12 @@ async def cb_end_poll(callback: CallbackQuery):
         )
     else:
         prompt_text = (
-            f"🏆 <b>পোল #{poll_id} সফলভাবে সমাপ্ত হয়েছে!</b>\n"
+            f"{header_status}\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📌 <b>শিরোনাম:</b> {html.escape(poll['title'])}\n"
+            f"📌 <b>শিরোনাম:</b> {html.escape(base_title)}\n"
             f"📢 <b>চ্যানেল:</b> {channel_name}\n\n"
             f"{winner_text}\n\n"
-            f"🗳️ <b>সর্বমোট ভোট:</b> <code>{total_votes}</code> টি\n"
+            f"🗳️ <b>{vote_label}:</b> <code>{total_votes}</code> টি\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"📢 <b>আপনি কি চ্যানেলে বিজয়ী ঘোষণা মেসেজ পাঠাতে চান?</b>\n\n"
             f"• <b>অটো ঘোষণা:</b> বট স্বয়ংক্রিয়ভাবে মেডেল ও ভোটসহ তালিকা পাঠাবে।\n"
@@ -337,6 +386,11 @@ async def cb_end_poll(callback: CallbackQuery):
         parse_mode="HTML"
     )
     await callback.answer()
+
+@router.callback_query(F.data.startswith("end_poll:"))
+async def cb_end_poll(callback: CallbackQuery):
+    poll_id = int(callback.data.split(":")[1])
+    await _handle_end_poll_unified(callback, poll_id)
 
 @router.callback_query(F.data.startswith("post_winner_auto:"))
 async def cb_post_winner_auto(callback: CallbackQuery):
@@ -365,23 +419,34 @@ async def cb_post_winner_auto(callback: CallbackQuery):
             await callback.answer("Access denied!", show_alert=True)
             return
 
-        candidates = await get_candidates(poll_id)
-        w_count = int(poll.get("winner_count") or 1)
-        voted = [c for c in candidates if c.get("votes_count", 0) > 0]
-        top_winners = voted[:w_count] if voted else candidates[:w_count]
-        total_votes = sum(c.get("votes_count", 0) for c in candidates)
+        parts = await get_poll_parts(poll_id)
+        is_multi_part = len(parts) > 1
+
+        if is_multi_part:
+            agg = await get_multi_part_aggregated_results(poll_id)
+            top_winners = agg.get("top_winners", [])
+            total_votes = agg.get("total_votes", 0)
+            clean_title = get_base_title(poll["title"])
+        else:
+            candidates = await get_candidates(poll_id)
+            w_count = int(poll.get("winner_count") or 1)
+            voted = [c for c in candidates if c.get("votes_count", 0) > 0]
+            top_winners = voted[:w_count] if voted else candidates[:w_count]
+            total_votes = sum(c.get("votes_count", 0) for c in candidates)
+            clean_title = poll["title"]
 
         channel_lang = poll.get("language") or lang
         bot_info = await callback.bot.get_me()
 
         announcement_text = await render_winner_announcement(
-            title=poll["title"],
+            title=clean_title,
             top_winners=top_winners,
             total_votes=total_votes,
             bot_username=bot_info.username,
             lang=channel_lang,
             creator_id=user_id,
-            contact_username=poll.get("contact_username")
+            contact_username=poll.get("contact_username"),
+            is_multi_part=is_multi_part
         )
 
         cta_text, cta_url = await render_poll_cta(bot_info.username, lang=channel_lang, creator_id=user_id)
@@ -608,87 +673,8 @@ async def cb_post_winner_skip(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("end_all_parts:"))
 async def cb_end_all_parts(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    lang = await get_user_language(user_id)
     poll_id = int(callback.data.split(":")[1])
-    poll = await get_poll(poll_id)
-
-    if not poll or (poll["creator_id"] != user_id and user_id not in ADMIN_IDS):
-        msg = "You don't have permission to end this poll!" if lang == "en" else "আপনার এই পোল সমাপ্ত করার অনুমতি নেই!"
-        await callback.answer(msg, show_alert=True)
-        return
-
-    try:
-        await callback.message.edit_reply_markup(reply_markup=None)
-    except Exception:
-        pass
-    await callback.answer("⏳ Ending all parts... / সকল পর্ব সমাপ্ত করা হচ্ছে...")
-
-    parts = await get_poll_parts(poll_id)
-    bot = callback.bot
-    bot_info = await bot.get_me()
-
-    ended_count = 0
-    all_candidates = []
-    for part in parts:
-        if part["status"] == "active":
-            p_data = await end_poll(part["poll_id"])
-            ended_count += 1
-            if part.get("channel_message_id") and part.get("target_chat_id"):
-                try:
-                    candidates = p_data.get("candidates", [])
-                    winner = p_data.get("winner")
-                    top_winners = p_data.get("top_winners") or ([winner] if winner and winner.get('votes_count', 0) > 0 else [])
-                    total_votes = sum(c["votes_count"] for c in candidates)
-                    channel_lang = part.get("language") or lang
-                    winner_text_chan = format_winners_display(top_winners, lang=channel_lang)
-
-                    cta_text, cta_url = await render_poll_cta(bot_info.username, lang=channel_lang, creator_id=user_id)
-                    icon_style = part.get("icon_style") or await get_button_icon_style()
-                    closed_kb = build_poll_keyboard(part["poll_id"], candidates, bot_info.username, is_closed=True, cta_text=cta_text, cta_url=cta_url, icon_style=icon_style)
-                    results_channel_text = await render_poll_ended(
-                        title=part['title'],
-                        winner=winner_text_chan,
-                        votes=total_votes,
-                        bot_username=bot_info.username,
-                        lang=channel_lang,
-                        created_at=part.get("created_at"),
-                        ended_at=p_data.get("ended_at"),
-                        creator_id=user_id,
-                        contact_username=part.get("contact_username") or poll.get("contact_username")
-                    )
-                    await safe_bot_edit_message(
-                        bot=bot,
-                        chat_id=part["target_chat_id"],
-                        message_id=part["channel_message_id"],
-                        text=results_channel_text,
-                        reply_markup=closed_kb,
-                        parse_mode="HTML",
-                        disable_web_page_preview=True
-                    )
-                except Exception:
-                    pass
-
-    # Ask creator whether to post announcement for the series
-    channel_name = html.escape(poll.get('target_chat_title') or 'Your Channel')
-    prompt_text = (
-        f"✅ <b>All {ended_count} connected parts ended!</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"📌 <b>Title:</b> {html.escape(poll['title'])}\n"
-        f"📢 <b>Channel:</b> {channel_name}\n\n"
-        f"📢 <b>Would you like to post an official winner announcement to the channel?</b>"
-        if lang == "en" else
-        f"✅ <b>সকল {ended_count} টি সংযুক্ত পর্ব সফলভাবে সমাপ্ত করা হয়েছে!</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"📌 <b>শিরোনাম:</b> {html.escape(poll['title'])}\n"
-        f"📢 <b>চ্যানেল:</b> {channel_name}\n\n"
-        f"📢 <b>আপনি কি চ্যানেলে চূড়ান্ত বিজয়ী ঘোষণা মেসেজ পাঠাতে চান?</b>"
-    )
-    await callback.message.edit_text(
-        prompt_text,
-        reply_markup=build_winner_announcement_choice_keyboard(poll_id, lang=lang),
-        parse_mode="HTML"
-    )
+    await _handle_end_poll_unified(callback, poll_id)
     await callback.answer()
 
 @router.callback_query(F.data.startswith("poll_contact:"))

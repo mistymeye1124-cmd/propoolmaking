@@ -1474,10 +1474,30 @@ async def render_poll_ended(
 
 
 
-def format_winners_display(top_winners: List[Dict[str, Any]], lang: str = "bn") -> str:
+def _format_part_badge(part_num: int, lang: str) -> str:
+    if not part_num:
+        return ""
+    if lang == "en":
+        return f" <i>(Part {part_num})</i>"
+    elif lang == "hi":
+        return f" <i>(भाग {part_num})</i>"
+    elif lang == "ar":
+        return f" <i>(الجزء {part_num})</i>"
+    elif lang == "ru":
+        return f" <i>(Часть {part_num})</i>"
+    else:
+        return f" <i>(পর্ব {to_bengali_num(part_num)})</i>"
+
+
+def format_winners_display(
+    top_winners: List[Dict[str, Any]],
+    lang: str = "bn",
+    is_multi_part: Optional[bool] = None
+) -> str:
     """
     Renders top winners formatted strictly descending from MAX votes to LOW votes.
     Supports Telegram Premium Custom Emojis (<tg-emoji> tags).
+    If is_multi_part is True (or winners contain part_number > 1), origin parts are tagged.
     """
     crown_icon = '<tg-emoji emoji-id="6235252066554484059">👑</tg-emoji>'
     trophy_icon = '<tg-emoji emoji-id="5226431245918942763">🏆</tg-emoji>'
@@ -1500,6 +1520,9 @@ def format_winners_display(top_winners: List[Dict[str, Any]], lang: str = "bn") 
         else:
             return f"{crown_icon} <b>কোনো বিজয়ী নির্ধারিত হয়নি</b> (কোনো ভোট পড়েনি)।"
 
+    if is_multi_part is None:
+        is_multi_part = any(w.get("part_number", 1) > 1 for w in top_winners)
+
     # Strictly sort candidates descending: MAX votes -> LOW votes
     sorted_winners = sorted(
         top_winners,
@@ -1510,32 +1533,46 @@ def format_winners_display(top_winners: List[Dict[str, Any]], lang: str = "bn") 
     medals = [gold_icon, silver_icon, bronze_icon, medal_icon, star_icon]
     lines = []
     if len(sorted_winners) > 1:
-        if lang == "en":
-            lines.append(f"{trophy_icon} <b>Top {len(sorted_winners)} Contest Winners (Ranked Max to Low):</b>")
-        elif lang == "hi":
-            lines.append(f"{trophy_icon} <b>शीर्ष {len(sorted_winners)} विजेता (अधिकतम से न्यूनतम):</b>")
-        elif lang == "ar":
-            lines.append(f"{trophy_icon} <b>أفضل {len(sorted_winners)} فائزين (من الأعلى إلى الأدنى):</b>")
-        elif lang == "ru":
-            lines.append(f"{trophy_icon} <b>Топ-{len(sorted_winners)} победителей (по убыванию):</b>")
+        if is_multi_part:
+            if lang == "en":
+                lines.append(f"{trophy_icon} <b>Top {len(sorted_winners)} Contest Winners (Across All Connected Parts):</b>")
+            elif lang == "hi":
+                lines.append(f"{trophy_icon} <b>शीर्ष {len(sorted_winners)} विजेता (सभी भागों को मिलाकर):</b>")
+            elif lang == "ar":
+                lines.append(f"{trophy_icon} <b>أفضل {len(sorted_winners)} فائزين (عبر جميع الأجزاء):</b>")
+            elif lang == "ru":
+                lines.append(f"{trophy_icon} <b>Топ-{len(sorted_winners)} победителей (по всем частям вместе):</b>")
+            else:
+                lines.append(f"{trophy_icon} <b>কনটেস্টের শীর্ষ {len(sorted_winners)} জন বিজয়ী (সকল পর্ব মিলিয়ে):</b>")
         else:
-            lines.append(f"{trophy_icon} <b>কনটেস্টের শীর্ষ {len(sorted_winners)} জন বিজয়ী (সর্বোচ্চ থেকে ক্রমানুসারে):</b>")
+            if lang == "en":
+                lines.append(f"{trophy_icon} <b>Top {len(sorted_winners)} Contest Winners (Ranked Max to Low):</b>")
+            elif lang == "hi":
+                lines.append(f"{trophy_icon} <b>शीर्ष {len(sorted_winners)} विजेता (अधिकतम से न्यूनतम):</b>")
+            elif lang == "ar":
+                lines.append(f"{trophy_icon} <b>أفضل {len(sorted_winners)} فائزين (من الأعلى إلى الأدنى):</b>")
+            elif lang == "ru":
+                lines.append(f"{trophy_icon} <b>Топ-{len(sorted_winners)} победителей (по убыванию):</b>")
+            else:
+                lines.append(f"{trophy_icon} <b>কনটেস্টের শীর্ষ {len(sorted_winners)} জন বিজয়ী (সর্বোচ্চ থেকে ক্রমানুসারে):</b>")
 
         for idx, w in enumerate(sorted_winners):
             medal = medals[idx] if idx < len(medals) else star_icon
             name = safe_html_preserve_tg_emoji(w["name"])
             votes = w.get("votes_count", w.get("votes", 0))
+            part_tag = _format_part_badge(w.get("part_number", 1), lang) if is_multi_part else ""
+
             if lang == "en":
                 v_label = "vote" if votes == 1 else "votes"
-                lines.append(f"{medal} <b>#{idx+1} Place:</b> {name} (<code>{votes}</code> {v_label})")
+                lines.append(f"{medal} <b>#{idx+1} Place:</b> {name}{part_tag} (<code>{votes}</code> {v_label})")
             elif lang == "hi":
-                lines.append(f"{medal} <b>#{idx+1} स्थान:</b> {name} (<code>{votes}</code> वोट)")
+                lines.append(f"{medal} <b>#{idx+1} स्थान:</b> {name}{part_tag} (<code>{votes}</code> वोट)")
             elif lang == "ar":
-                lines.append(f"{medal} <b>المركز {idx+1}:</b> {name} (<code>{votes}</code> أصوات)")
+                lines.append(f"{medal} <b>المركز {idx+1}:</b> {name}{part_tag} (<code>{votes}</code> أصوات)")
             elif lang == "ru":
-                lines.append(f"{medal} <b>{idx+1}-е место:</b> {name} (<code>{votes}</code> голосов)")
+                lines.append(f"{medal} <b>{idx+1}-е место:</b> {name}{part_tag} (<code>{votes}</code> голосов)")
             else:
-                lines.append(f"{medal} <b>{idx+1}ম স্থান:</b> {name} (<code>{votes}</code> ভোট)")
+                lines.append(f"{medal} <b>{idx+1}ম স্থান:</b> {name}{part_tag} (<code>{votes}</code> ভোট)")
 
         congrats = (
             f"{party_icon} <i>Congratulations to all winners!</i>"
@@ -1551,30 +1588,32 @@ def format_winners_display(top_winners: List[Dict[str, Any]], lang: str = "bn") 
         w = sorted_winners[0]
         name = safe_html_preserve_tg_emoji(w["name"])
         votes = w.get("votes_count", w.get("votes", 0))
+        part_tag = _format_part_badge(w.get("part_number", 1), lang) if is_multi_part else ""
+
         if lang == "en":
             v_label = "vote" if votes == 1 else "votes"
             return (
-                f"{crown_icon} <b>#1 Winner:</b> {name} (<code>{votes}</code> {v_label})\n"
+                f"{crown_icon} <b>#1 Winner:</b> {name}{part_tag} (<code>{votes}</code> {v_label})\n"
                 f"{party_icon} Congratulations to the top winner!"
             )
         elif lang == "hi":
             return (
-                f"{crown_icon} <b>#1 विजेता:</b> {name} (<code>{votes}</code> वोट)\n"
+                f"{crown_icon} <b>#1 विजेता:</b> {name}{part_tag} (<code>{votes}</code> वोट)\n"
                 f"{party_icon} शीर्ष विजेता को हार्दिक बधाई!"
             )
         elif lang == "ar":
             return (
-                f"{crown_icon} <b>#1 الفائز:</b> {name} (<code>{votes}</code> أصوات)\n"
+                f"{crown_icon} <b>#1 الفائز:</b> {name}{part_tag} (<code>{votes}</code> أصوات)\n"
                 f"{party_icon} مبروك للفائز بالمركز الأول!"
             )
         elif lang == "ru":
             return (
-                f"{crown_icon} <b>#1 Победитель:</b> {name} (<code>{votes}</code> голосов)\n"
+                f"{crown_icon} <b>#1 Победитель:</b> {name}{part_tag} (<code>{votes}</code> голосов)\n"
                 f"{party_icon} Поздравляем главного победителя!"
             )
         else:
             return (
-                f"{crown_icon} <b>১ম বিজয়ী:</b> {name} (<code>{votes}</code> ভোট)\n"
+                f"{crown_icon} <b>১ম বিজয়ী:</b> {name}{part_tag} (<code>{votes}</code> ভোট)\n"
                 f"{party_icon} অভিনন্দন সর্বোচ্চ ভোটপ্রাপ্ত ক্রিয়েটরকে!"
             )
 
@@ -1586,7 +1625,8 @@ async def render_winner_announcement(
     bot_username: str,
     lang: str = "bn",
     creator_id: Optional[int] = None,
-    contact_username: Optional[str] = None
+    contact_username: Optional[str] = None,
+    is_multi_part: Optional[bool] = None
 ) -> str:
     """
     Renders the full winner announcement post for the channel with title,
@@ -1608,7 +1648,7 @@ async def render_winner_announcement(
         if default_c:
             clean_contact = default_c.strip()
 
-    winners_text = format_winners_display(top_winners, lang=lang)
+    winners_text = format_winners_display(top_winners, lang=lang, is_multi_part=is_multi_part)
 
     tpl_winner = await get_raw_template("tpl_winner_announcement", lang=lang)
     tpl_claim = await get_raw_template("tpl_prize_claim", lang=lang)

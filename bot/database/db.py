@@ -454,6 +454,51 @@ async def get_poll_parts(poll_id: int) -> List[Dict[str, Any]]:
             rows = await cursor.fetchall()
             return [dict(r) for r in rows]
 
+async def get_multi_part_aggregated_results(poll_id: int) -> Dict[str, Any]:
+    """
+    Aggregates candidates, votes, and winners across all connected parts of a contest.
+    If the poll has multiple parts, all parts are queried and unified into a single leaderboard.
+    """
+    parts = await get_poll_parts(poll_id)
+    root_poll = parts[0] if parts else await get_poll(poll_id)
+    is_multi = len(parts) > 1
+
+    all_candidates = []
+    total_votes = 0
+    for part in parts:
+        p_id = part["poll_id"]
+        p_num = part.get("part_number") or 1
+        cands = await get_candidates(p_id)
+        for c in cands:
+            c_dict = dict(c)
+            c_dict["part_number"] = p_num
+            c_dict["poll_id"] = p_id
+            c_dict["poll_title"] = part.get("title", "")
+            all_candidates.append(c_dict)
+            total_votes += c_dict.get("votes_count", 0)
+
+    # Sort strictly descending: MAX votes to LOW votes
+    sorted_all = sorted(
+        all_candidates,
+        key=lambda c: (c.get("votes_count", 0), -c.get("candidate_id", 0)),
+        reverse=True
+    )
+
+    w_count = int(root_poll.get("winner_count") or 1) if root_poll else 1
+    voted = [c for c in sorted_all if c.get("votes_count", 0) > 0]
+    top_winners = voted[:w_count] if voted else sorted_all[:w_count]
+
+    return {
+        "root_poll": root_poll,
+        "parts": parts,
+        "is_multi_part": is_multi,
+        "all_candidates": sorted_all,
+        "top_winners": top_winners,
+        "winner": top_winners[0] if top_winners else None,
+        "total_votes": total_votes,
+        "winner_count": w_count
+    }
+
 async def get_next_part_number(poll_id: int) -> int:
     async with get_db() as db:
         async with db.execute("SELECT parent_poll_id FROM polls WHERE poll_id = ?", (poll_id,)) as cursor:
