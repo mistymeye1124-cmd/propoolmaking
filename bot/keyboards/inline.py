@@ -98,17 +98,21 @@ def get_candidate_icon(
     else:
         return "🗳️ "
 
-def strip_all_emojis(text: str) -> str:
+def strip_all_emojis(text: str, preserve_checkmarks: bool = True) -> str:
     """
     Strips all unicode emojis, symbols, and variation selectors from a string
     so that only clean text remains without duplicate icons.
+    Preserves status checkmarks like ✅ (0x2705) and ☑️ (0x2611) when used as active selectors.
     """
     if not text:
         return ""
     chars = []
     for c in text:
-        cat = unicodedata.category(c)
         cp = ord(c)
+        if preserve_checkmarks and cp in (0x2705, 0x2611, 0x2713, 0x2714):
+            chars.append(c)
+            continue
+        cat = unicodedata.category(c)
         if (
             cat in ('So', 'Sk') or
             0x1F000 <= cp <= 0x1FAFF or
@@ -220,11 +224,16 @@ def make_custom_button(
     Helper to construct an InlineKeyboardButton with automatic Telegram Premium custom emoji parsing.
     If text contains <tg-emoji emoji-id="123">...</tg-emoji> or custom_emoji_id is passed,
     it sets icon_custom_emoji_id="123".
+    When custom_emoji_id is active, any static unicode emojis are automatically stripped from the text
+    to prevent duplicate icons.
     """
     from bot.templates import extract_custom_emoji_info
     clean_text, parsed_emoji_id = extract_custom_emoji_info(text)
     final_emoji_id = custom_emoji_id or parsed_emoji_id
-    kwargs = {"text": clean_text or text}
+    btn_text = clean_text or text
+    if final_emoji_id:
+        btn_text = strip_all_emojis(btn_text)
+    kwargs = {"text": btn_text}
     if callback_data:
         kwargs["callback_data"] = callback_data
     if url:
@@ -299,7 +308,11 @@ def build_poll_keyboard(
         )
         
         chosen_custom_emoji_id = cand_name_emoji_id or style_emoji_id
-        btn_text = f"{icon}{clean_name} • {votes}"
+        if chosen_custom_emoji_id:
+            clean_cand_name = strip_all_emojis(clean_name)
+            btn_text = f"{clean_cand_name} • {votes}"
+        else:
+            btn_text = f"{icon}{clean_name} • {votes}"
         
         if is_closed:
             callback = f"poll_closed:{poll_id}"
@@ -321,11 +334,16 @@ def build_poll_keyboard(
     button_label = cta_text or "⚡ Create Your Poll / নিজের পোল বানান ➔"
     clean_cta_label, cta_emoji_id = extract_custom_emoji_info(button_label)
     final_url = cta_url or f"https://t.me/{bot_username}?start=create_poll"
+    from bot.database.db import get_cached_button_custom_emoji
+    cta_icon_id = cta_emoji_id or get_cached_button_custom_emoji("cta_button") or "6271459718896554468"
+    final_cta_label = clean_cta_label or button_label
+    if cta_icon_id:
+        final_cta_label = strip_all_emojis(final_cta_label)
     buttons.append([
         InlineKeyboardButton(
-            text=clean_cta_label or button_label,
+            text=final_cta_label,
             url=final_url,
-            icon_custom_emoji_id=cta_emoji_id or "6271459718896554468"
+            icon_custom_emoji_id=cta_icon_id
         )
     ])
 
@@ -336,114 +354,125 @@ def build_poll_keyboard(
 def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = "bn") -> InlineKeyboardMarkup:
     """
     Adapts menu buttons cleanly to chosen language, including 1-tap Channel Admin link.
-    Supports Telegram Premium custom emojis on buttons.
+    Supports dynamic Telegram Premium custom emojis configured from Admin Panel.
     """
+    from bot.database.db import get_cached_button_custom_emoji
     clean_bot = bot_username.lstrip("@")
     add_channel_url = (
         f"https://t.me/{clean_bot}?startchannel=true&admin=post_messages+edit_messages+delete_messages"
         if clean_bot else None
     )
 
+    e_create = get_cached_button_custom_emoji("create_poll")
+    e_channels = get_cached_button_custom_emoji("my_channels")
+    e_add_ch = get_cached_button_custom_emoji("add_channel")
+    e_polls = get_cached_button_custom_emoji("my_polls")
+    e_icons = get_cached_button_custom_emoji("icon_style")
+    e_lang = get_cached_button_custom_emoji("language")
+    e_help = get_cached_button_custom_emoji("help")
+    e_quick = get_cached_button_custom_emoji("quick_menu")
+    e_admin = get_cached_button_custom_emoji("admin_panel")
+
     if lang == "en":
         keyboard = [
-            [make_custom_button(text="Create New Poll", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
-            [make_custom_button(text="📢 Added Channels", callback_data="menu_my_channels", custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID)],
-            [make_custom_button(text="Add Bot to Channel (1-Click) ➔", url=add_channel_url, custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID)] if add_channel_url else [],
+            [make_custom_button(text="Create New Poll", callback_data="menu_create_poll", custom_emoji_id=e_create)],
+            [make_custom_button(text="📢 Added Channels", callback_data="menu_my_channels", custom_emoji_id=e_channels)],
+            [make_custom_button(text="Add Bot to Channel (1-Click) ➔", url=add_channel_url, custom_emoji_id=e_add_ch)] if add_channel_url else [],
             [
-                make_custom_button(text="My Polls", callback_data="menu_my_polls", custom_emoji_id=MY_POLLS_CUSTOM_EMOJI_ID),
-                make_custom_button(text="Button Icons", callback_data="user_set_icon_style", custom_emoji_id=BUTTON_ICONS_CUSTOM_EMOJI_ID)
+                make_custom_button(text="My Polls", callback_data="menu_my_polls", custom_emoji_id=e_polls),
+                make_custom_button(text="Button Icons", callback_data="user_set_icon_style", custom_emoji_id=e_icons)
             ],
             [
-                make_custom_button(text="Language", callback_data="menu_change_lang", custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID),
-                make_custom_button(text="Help & Support", callback_data="menu_help", custom_emoji_id=HELP_CUSTOM_EMOJI_ID)
+                make_custom_button(text="Language", callback_data="menu_change_lang", custom_emoji_id=e_lang),
+                make_custom_button(text="Help & Support", callback_data="menu_help", custom_emoji_id=e_help)
             ],
             [
-                make_custom_button(text="📱 Bottom Keyboard (Quick Menu)", callback_data="toggle_bottom_menu")
+                make_custom_button(text="📱 Bottom Keyboard (Quick Menu)", callback_data="toggle_bottom_menu", custom_emoji_id=e_quick)
             ]
         ]
         keyboard = [row for row in keyboard if row]
         if is_admin:
-            keyboard.append([make_custom_button(text="👑 Super Admin Panel", callback_data="menu_admin", custom_emoji_id=ADMIN_CUSTOM_EMOJI_ID)])
+            keyboard.append([make_custom_button(text="👑 Super Admin Panel", callback_data="menu_admin", custom_emoji_id=e_admin)])
     elif lang == "hi":
         keyboard = [
-            [make_custom_button(text="नया पोल बनाएं", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
-            [make_custom_button(text="📢 जुड़े हुए चैनल (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID)],
-            [make_custom_button(text="चैनल में बॉट जोड़ें (1-क्लिक) ➔", url=add_channel_url, custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID)] if add_channel_url else [],
+            [make_custom_button(text="नया पोल बनाएं", callback_data="menu_create_poll", custom_emoji_id=e_create)],
+            [make_custom_button(text="📢 जुड़े हुए चैनल (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=e_channels)],
+            [make_custom_button(text="चैनल में बॉट जोड़ें (1-क्लिक) ➔", url=add_channel_url, custom_emoji_id=e_add_ch)] if add_channel_url else [],
             [
-                make_custom_button(text="मेरे पोल्स", callback_data="menu_my_polls", custom_emoji_id=MY_POLLS_CUSTOM_EMOJI_ID),
-                make_custom_button(text="बटन आइकन", callback_data="user_set_icon_style", custom_emoji_id=BUTTON_ICONS_CUSTOM_EMOJI_ID)
+                make_custom_button(text="मेरे पोल्स", callback_data="menu_my_polls", custom_emoji_id=e_polls),
+                make_custom_button(text="बटन आइकन", callback_data="user_set_icon_style", custom_emoji_id=e_icons)
             ],
             [
-                make_custom_button(text="भाषा बदलें", callback_data="menu_change_lang", custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID),
-                make_custom_button(text="सहायता एवं सपोर्ट", callback_data="menu_help", custom_emoji_id=HELP_CUSTOM_EMOJI_ID)
+                make_custom_button(text="भाषा बदलें", callback_data="menu_change_lang", custom_emoji_id=e_lang),
+                make_custom_button(text="सहायता एवं सपोर्ट", callback_data="menu_help", custom_emoji_id=e_help)
             ],
             [
-                make_custom_button(text="📱 बॉटम कीबोर्ड (क्विक मेनू)", callback_data="toggle_bottom_menu")
+                make_custom_button(text="📱 बॉटम कीबोर्ड (क्विक मेनू)", callback_data="toggle_bottom_menu", custom_emoji_id=e_quick)
             ]
         ]
         keyboard = [row for row in keyboard if row]
         if is_admin:
-            keyboard.append([make_custom_button(text="👑 सुपर एडमिन पैनल", callback_data="menu_admin", custom_emoji_id=ADMIN_CUSTOM_EMOJI_ID)])
+            keyboard.append([make_custom_button(text="👑 सुपर एडमिन पैनल", callback_data="menu_admin", custom_emoji_id=e_admin)])
     elif lang == "ar":
         keyboard = [
-            [make_custom_button(text="إنشاء استطلاع جديد", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
-            [make_custom_button(text="📢 القنوات المضافة (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID)],
-            [make_custom_button(text="إضافة البوت إلى القناة (نقرة واحدة) ➔", url=add_channel_url, custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID)] if add_channel_url else [],
+            [make_custom_button(text="إنشاء استطلاع جديد", callback_data="menu_create_poll", custom_emoji_id=e_create)],
+            [make_custom_button(text="📢 القنوات المضافة (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=e_channels)],
+            [make_custom_button(text="إضافة البوت إلى القناة (نقرة واحدة) ➔", url=add_channel_url, custom_emoji_id=e_add_ch)] if add_channel_url else [],
             [
-                make_custom_button(text="استطلاعاتي", callback_data="menu_my_polls", custom_emoji_id=MY_POLLS_CUSTOM_EMOJI_ID),
-                make_custom_button(text="أيقونات الأزرار", callback_data="user_set_icon_style", custom_emoji_id=BUTTON_ICONS_CUSTOM_EMOJI_ID)
+                make_custom_button(text="استطلاعاتي", callback_data="menu_my_polls", custom_emoji_id=e_polls),
+                make_custom_button(text="أيقونات الأزرার", callback_data="user_set_icon_style", custom_emoji_id=e_icons)
             ],
             [
-                make_custom_button(text="تغيير اللغة", callback_data="menu_change_lang", custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID),
-                make_custom_button(text="المساعدة والدعم", callback_data="menu_help", custom_emoji_id=HELP_CUSTOM_EMOJI_ID)
+                make_custom_button(text="تغيير اللغة", callback_data="menu_change_lang", custom_emoji_id=e_lang),
+                make_custom_button(text="المساعدة والدعم", callback_data="menu_help", custom_emoji_id=e_help)
             ],
             [
-                make_custom_button(text="📱 لوحة المفاتيح السفلية (قائمة سريعة)", callback_data="toggle_bottom_menu")
+                make_custom_button(text="📱 لوحة المفاتيح السفلية (قائمة سريعة)", callback_data="toggle_bottom_menu", custom_emoji_id=e_quick)
             ]
         ]
         keyboard = [row for row in keyboard if row]
         if is_admin:
-            keyboard.append([make_custom_button(text="👑 لوحة تحكم المشرف", callback_data="menu_admin", custom_emoji_id=ADMIN_CUSTOM_EMOJI_ID)])
+            keyboard.append([make_custom_button(text="👑 لوحة تحكم المشرف", callback_data="menu_admin", custom_emoji_id=e_admin)])
     elif lang == "ru":
         keyboard = [
-            [make_custom_button(text="Создать новый опрос", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
-            [make_custom_button(text="📢 Добавленные каналы (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID)],
-            [make_custom_button(text="Добавить в канал (1 клик) ➔", url=add_channel_url, custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID)] if add_channel_url else [],
+            [make_custom_button(text="Создать новый опрос", callback_data="menu_create_poll", custom_emoji_id=e_create)],
+            [make_custom_button(text="📢 Добавленные каналы (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=e_channels)],
+            [make_custom_button(text="Добавить в канал (1 клик) ➔", url=add_channel_url, custom_emoji_id=e_add_ch)] if add_channel_url else [],
             [
-                make_custom_button(text="Мои опросы", callback_data="menu_my_polls", custom_emoji_id=MY_POLLS_CUSTOM_EMOJI_ID),
-                make_custom_button(text="Иконки кнопок", callback_data="user_set_icon_style", custom_emoji_id=BUTTON_ICONS_CUSTOM_EMOJI_ID)
+                make_custom_button(text="Мои опросы", callback_data="menu_my_polls", custom_emoji_id=e_polls),
+                make_custom_button(text="Иконки кнопок", callback_data="user_set_icon_style", custom_emoji_id=e_icons)
             ],
             [
-                make_custom_button(text="Изменить язык", callback_data="menu_change_lang", custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID),
-                make_custom_button(text="Помощь и поддержка", callback_data="menu_help", custom_emoji_id=HELP_CUSTOM_EMOJI_ID)
+                make_custom_button(text="Изменить язык", callback_data="menu_change_lang", custom_emoji_id=e_lang),
+                make_custom_button(text="Помощь и поддержка", callback_data="menu_help", custom_emoji_id=e_help)
             ],
             [
-                make_custom_button(text="📱 Нижняя клавиатура (быстрое меню)", callback_data="toggle_bottom_menu")
+                make_custom_button(text="📱 Нижняя клавиатура (быстрое меню)", callback_data="toggle_bottom_menu", custom_emoji_id=e_quick)
             ]
         ]
         keyboard = [row for row in keyboard if row]
         if is_admin:
-            keyboard.append([make_custom_button(text="👑 Панель супер-админа", callback_data="menu_admin", custom_emoji_id=ADMIN_CUSTOM_EMOJI_ID)])
+            keyboard.append([make_custom_button(text="👑 Панель супер-админа", callback_data="menu_admin", custom_emoji_id=e_admin)])
     else:
         keyboard = [
-            [make_custom_button(text="নতুন পোল তৈরি করুন", callback_data="menu_create_poll", custom_emoji_id=CREATE_POLL_CUSTOM_EMOJI_ID)],
-            [make_custom_button(text="📢 যুক্ত চ্যানেলসমূহ (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=ADDED_CHANNELS_CUSTOM_EMOJI_ID)],
-            [make_custom_button(text="চ্যানেলে যুক্ত করুন (১-ক্লিক এডমিন) ➔", url=add_channel_url, custom_emoji_id=ADD_CHANNEL_CUSTOM_EMOJI_ID)] if add_channel_url else [],
+            [make_custom_button(text="নতুন পোল তৈরি করুন", callback_data="menu_create_poll", custom_emoji_id=e_create)],
+            [make_custom_button(text="📢 যুক্ত চ্যানেলসমূহ (Added Channels)", callback_data="menu_my_channels", custom_emoji_id=e_channels)],
+            [make_custom_button(text="চ্যানেলে যুক্ত করুন (১-ক্লিক এডমিন) ➔", url=add_channel_url, custom_emoji_id=e_add_ch)] if add_channel_url else [],
             [
-                make_custom_button(text="আমার পোল তালিকা", callback_data="menu_my_polls", custom_emoji_id=MY_POLLS_CUSTOM_EMOJI_ID),
-                make_custom_button(text="বাটন আইকন স্টাইল", callback_data="user_set_icon_style", custom_emoji_id=BUTTON_ICONS_CUSTOM_EMOJI_ID)
+                make_custom_button(text="আমার পোল তালিকা", callback_data="menu_my_polls", custom_emoji_id=e_polls),
+                make_custom_button(text="বাটন আইকন স্টাইল", callback_data="user_set_icon_style", custom_emoji_id=e_icons)
             ],
             [
-                make_custom_button(text="ভাষা পরিবর্তন", callback_data="menu_change_lang", custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID),
-                make_custom_button(text="ব্যবহারের নিয়ম ও সাপোর্ট", callback_data="menu_help", custom_emoji_id=HELP_CUSTOM_EMOJI_ID)
+                make_custom_button(text="ভাষা পরিবর্তন", callback_data="menu_change_lang", custom_emoji_id=e_lang),
+                make_custom_button(text="ব্যবহারের নিয়ম ও সাপোর্ট", callback_data="menu_help", custom_emoji_id=e_help)
             ],
             [
-                make_custom_button(text="📱 বটম কিবোর্ড (কুইক মেনু)", callback_data="toggle_bottom_menu")
+                make_custom_button(text="📱 বটম কিবোর্ড (কুইক মেনু)", callback_data="toggle_bottom_menu", custom_emoji_id=e_quick)
             ]
         ]
         keyboard = [row for row in keyboard if row]
         if is_admin:
-            keyboard.append([make_custom_button(text="👑 এডমিন প্যানেল [গোপন]", callback_data="menu_admin", custom_emoji_id=ADMIN_CUSTOM_EMOJI_ID)])
+            keyboard.append([make_custom_button(text="👑 এডমিন প্যানেল [গোপন]", callback_data="menu_admin", custom_emoji_id=e_admin)])
             
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
@@ -519,6 +548,7 @@ def build_admin_keyboard(user_id: Optional[int] = None) -> InlineKeyboardMarkup:
     is_owner = (user_id in SUPER_ADMIN_IDS or user_id == 8370293945) if user_id else False
 
     buttons = [
+        [InlineKeyboardButton(text="⭐ Button Premium Emojis / বাটন প্রিমিয়াম ইমোজি ম্যানেজার", callback_data="admin_manage_btn_emojis")],
         [InlineKeyboardButton(text="🎨 Texts & Emojis / টেক্সট ও কাস্টম ইমোজি", callback_data="admin_manage_texts")],
         [InlineKeyboardButton(text="🎯 Button Icon Style / বাটন আইকন স্টাইল", callback_data="admin_manage_icon_style")]
     ]
@@ -536,6 +566,38 @@ def build_admin_keyboard(user_id: Optional[int] = None) -> InlineKeyboardMarkup:
     buttons.extend([
         [InlineKeyboardButton(text="🛡️ Security & Shield Status / নিরাপত্তা ও শিল্ড", callback_data="admin_security_status")],
         [make_custom_button(text="🔙 Main Menu / মূল মেনু", callback_data="menu_back_main", custom_emoji_id=START_MENU_CUSTOM_EMOJI_ID)]
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def build_button_emoji_manager_keyboard(emoji_map: Dict[str, Optional[str]]) -> InlineKeyboardMarkup:
+    """
+    Admin panel keyboard displaying all system buttons and their current custom emoji status.
+    """
+    from bot.database.db import BUTTON_METADATA
+    buttons = []
+    for key, meta in BUTTON_METADATA.items():
+        cur_id = emoji_map.get(key)
+        status_tag = f"💎 [ID: {cur_id[-6:]}]" if cur_id else "⚠️ Not Set"
+        btn_text = f"{meta['icon']} {meta['title']} ➔ {status_tag}"
+        buttons.append([InlineKeyboardButton(text=btn_text, callback_data=f"btn_emoji_view:{key}")])
+    buttons.append([InlineKeyboardButton(text="🔙 Back to Admin Panel / এডমিন প্যানেল", callback_data="menu_admin")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def build_button_emoji_action_keyboard(button_key: str, has_custom_id: bool) -> InlineKeyboardMarkup:
+    """
+    Actions for a specific button in the emoji manager.
+    """
+    buttons = [
+        [InlineKeyboardButton(text="✏️ Set / Change Animated Emoji / নতুন ইমোজি সেট", callback_data=f"btn_emoji_edit:{button_key}")]
+    ]
+    if has_custom_id:
+        buttons.append([
+            InlineKeyboardButton(text="🗑️ Remove Custom Emoji / ডিফল্ট এ ফেরত", callback_data=f"btn_emoji_remove:{button_key}")
+        ])
+    buttons.append([
+        InlineKeyboardButton(text="🔙 Back to Button List / বাটন তালিকা", callback_data="admin_manage_btn_emojis")
     ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 

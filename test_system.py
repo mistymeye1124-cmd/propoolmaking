@@ -979,9 +979,11 @@ async def run_tests():
     kb_closed = build_poll_keyboard(1234, test_cands, "mybot", is_closed=True, icon_style="diamond")
     btn_w = kb_closed.inline_keyboard[0][0]
     btn_nw = kb_closed.inline_keyboard[0][1]
-    assert "🏆 Candidate 1 • 5" in btn_w.text
+    assert "Candidate 1 • 5" in btn_w.text
+    assert "🏆" not in btn_w.text
     assert btn_w.icon_custom_emoji_id == "5226431245918942763"
-    assert "💎 Candidate 2 • 0" in btn_nw.text, f"Expected 💎 in button text, got {btn_nw.text}"
+    assert "Candidate 2 • 0" in btn_nw.text
+    assert "💎" not in btn_nw.text
     assert btn_nw.icon_custom_emoji_id == "6271494293383286950"
 
     # 2. Message Cards Telegram Premium Emojis

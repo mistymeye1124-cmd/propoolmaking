@@ -136,6 +136,14 @@ async def init_db():
             );
         """)
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS button_custom_emojis (
+                button_key TEXT PRIMARY KEY,
+                custom_emoji_id TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
         # Default Super Admin Brand Credit: @ProPoolMaking_bot
         await db.execute("""
             INSERT OR IGNORE INTO settings (key, value)
@@ -147,6 +155,8 @@ async def init_db():
         """)
 
         await db.commit()
+
+    await _init_button_emoji_cache_if_needed()
 
 # --- User operations ---
 async def save_user(user_id: int, username: Optional[str] = None, first_name: str = "", last_name: Optional[str] = None):
@@ -812,4 +822,94 @@ async def delete_user_saved_emoji(user_id: int, emoji_id: str) -> bool:
         """, (user_id, str(emoji_id).strip()))
         await db.commit()
     return True
+
+# --- Dynamic System Button Premium Custom Emojis ---
+
+DEFAULT_BUTTON_CUSTOM_EMOJIS: Dict[str, Optional[str]] = {
+    "create_poll": "5397916757333654639",
+    "my_channels": "6032575759606878027",
+    "add_channel": "6242353099193718277",
+    "my_polls": "6269397073737553354",
+    "icon_style": "5201762530023733712",
+    "language": "5397798946380721942",
+    "help": "5373098009640836781",
+    "quick_menu": None,  # Can be set by Admin to any Telegram Premium Animated Emoji!
+    "admin_panel": "6235252066554484059",
+    "cta_button": "6271459718896554468",
+    "back_main": "5323642109767460983"
+}
+
+BUTTON_METADATA: Dict[str, Dict[str, str]] = {
+    "create_poll": {"title": "Create New Poll / নতুন পোল", "icon": "📝"},
+    "my_channels": {"title": "Added Channels / যুক্ত চ্যানেল", "icon": "📢"},
+    "add_channel": {"title": "Add Bot to Channel / চ্যানেলে যুক্ত করুন", "icon": "➕"},
+    "my_polls": {"title": "My Polls / আমার পোল তালিকা", "icon": "📁"},
+    "icon_style": {"title": "Button Icons / বাটন আইকন স্টাইল", "icon": "🎯"},
+    "language": {"title": "Language / ভাষা পরিবর্তন", "icon": "🌐"},
+    "help": {"title": "Help & Support / নিয়মাবলী ও সাপোর্ট", "icon": "💡"},
+    "quick_menu": {"title": "Quick Menu (Bottom Toggle) / বটম মেনু বাটন", "icon": "📱"},
+    "admin_panel": {"title": "Super Admin Panel / এডমিন প্যানেল", "icon": "👑"},
+    "cta_button": {"title": "Poll CTA Button / পোল প্রমোশনাল বাটন", "icon": "⚡"},
+    "back_main": {"title": "Back to Main Menu / মূল মেনুতে ফেরা", "icon": "🔙"}
+}
+
+_button_emoji_cache: Dict[str, Optional[str]] = {}
+_button_emoji_cache_initialized: bool = False
+
+async def _init_button_emoji_cache_if_needed():
+    global _button_emoji_cache, _button_emoji_cache_initialized
+    if not _button_emoji_cache_initialized:
+        _button_emoji_cache = dict(DEFAULT_BUTTON_CUSTOM_EMOJIS)
+        try:
+            async with get_db() as db:
+                async with db.execute("SELECT button_key, custom_emoji_id FROM button_custom_emojis") as cursor:
+                    rows = await cursor.fetchall()
+                    for r in rows:
+                        _button_emoji_cache[r["button_key"]] = r["custom_emoji_id"]
+        except Exception:
+            pass
+        _button_emoji_cache_initialized = True
+
+def get_cached_button_custom_emoji(button_key: str) -> Optional[str]:
+    return _button_emoji_cache.get(button_key, DEFAULT_BUTTON_CUSTOM_EMOJIS.get(button_key))
+
+async def get_button_custom_emoji(button_key: str) -> Optional[str]:
+    await _init_button_emoji_cache_if_needed()
+    return _button_emoji_cache.get(button_key, DEFAULT_BUTTON_CUSTOM_EMOJIS.get(button_key))
+
+async def get_all_button_custom_emojis() -> Dict[str, Optional[str]]:
+    await _init_button_emoji_cache_if_needed()
+    res = dict(DEFAULT_BUTTON_CUSTOM_EMOJIS)
+    res.update(_button_emoji_cache)
+    return res
+
+async def set_button_custom_emoji(button_key: str, custom_emoji_id: Optional[str]) -> bool:
+    global _button_emoji_cache
+    await _init_button_emoji_cache_if_needed()
+    clean_id = str(custom_emoji_id).strip() if custom_emoji_id else None
+    async with get_db() as db:
+        if clean_id:
+            await db.execute("""
+                INSERT INTO button_custom_emojis (button_key, custom_emoji_id, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(button_key) DO UPDATE SET
+                    custom_emoji_id = excluded.custom_emoji_id,
+                    updated_at = CURRENT_TIMESTAMP;
+            """, (button_key, clean_id))
+            _button_emoji_cache[button_key] = clean_id
+        else:
+            await db.execute("DELETE FROM button_custom_emojis WHERE button_key = ?", (button_key,))
+            _button_emoji_cache[button_key] = None
+        await db.commit()
+    return True
+
+async def reset_button_custom_emoji(button_key: str) -> bool:
+    global _button_emoji_cache
+    await _init_button_emoji_cache_if_needed()
+    async with get_db() as db:
+        await db.execute("DELETE FROM button_custom_emojis WHERE button_key = ?", (button_key,))
+        await db.commit()
+    _button_emoji_cache[button_key] = DEFAULT_BUTTON_CUSTOM_EMOJIS.get(button_key)
+    return True
+
 

@@ -14,12 +14,14 @@ from bot.database.db import (
     get_custom_credit, set_custom_credit,
     get_custom_credit_btn_text, set_custom_credit_btn_text,
     get_button_icon_style, set_button_icon_style,
-    get_user_icon_style, set_user_icon_style, get_user_saved_emojis
+    get_user_icon_style, set_user_icon_style, get_user_saved_emojis,
+    get_button_custom_emoji, get_all_button_custom_emojis,
+    set_button_custom_emoji, reset_button_custom_emoji, BUTTON_METADATA
 )
 from bot.keyboards.inline import (
     build_admin_keyboard, build_templates_menu, build_template_edit_menu,
     build_credit_manager_keyboard, build_channel_network_keyboard, build_channel_detail_keyboard,
-    build_icon_style_keyboard
+    build_icon_style_keyboard, build_button_emoji_manager_keyboard, build_button_emoji_action_keyboard
 )
 from bot.templates import (
     DESCRIPTIONS, get_raw_template, save_template_with_autotranslate, reset_template,
@@ -73,6 +75,7 @@ class AdminStates(StatesGroup):
     edit_credit_btn_text = State()
     add_channel = State()
     custom_icon = State()
+    edit_button_emoji = State()
 
 @router.message(Command("admin"))
 async def cmd_admin(message: Message):
@@ -227,6 +230,174 @@ async def show_security_status(message_or_cb, bot, is_callback: bool = False):
         await message_or_cb.edit_text(text, reply_markup=kb, parse_mode="HTML")
     else:
         await message_or_cb.answer(text, reply_markup=kb, parse_mode="HTML")
+
+# --- Button Premium Custom Emoji Manager ---
+
+@router.callback_query(F.data == "admin_manage_btn_emojis")
+async def cb_admin_manage_btn_emojis(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        return
+    emoji_map = await get_all_button_custom_emojis()
+    text = (
+        "⭐ <b>Button Premium Emojis Manager / বাটন প্রিমিয়াম ইমোজি কন্ট্রোল</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "বটের যেকোনো বাটনে টেলিগ্রাম প্রিমিয়াম <b>Animated Custom Emoji</b> সেট বা পরিবর্তন করতে নিচের বাটনগুলোর মধ্যে থেকে নির্বাচন করুন।\n\n"
+        "💡 <b>প্রিমিয়াম অ্যাকাউন্ট ব্যবহারের সুবিধা:</b>\n"
+        "আপনার টেলিগ্রাম প্রিমিয়াম অ্যাকাউন্ট থেকে যেকোনো অ্যানিমেটেড ইমোজি সরাসরি সেন্ড করলেই বট স্বয়ংক্রিয়ভাবে তার ৬৪-বিট প্রিমিয়াম আইডি কোডে বসিয়ে দেবে এবং টেক্সট থেকে অপ্রয়োজনীয় ডুপ্লিকেট স্বাভাবিক ইমোজি মুছে দেবে!\n\n"
+        "<i>যেকোনো বাটনে ট্যাপ করে নতুন ইমোজি সেট করুন:</i>"
+    )
+    from bot.templates import safe_edit_message
+    await safe_edit_message(callback.message, text, reply_markup=build_button_emoji_manager_keyboard(emoji_map), parse_mode="HTML")
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("btn_emoji_view:"))
+async def cb_btn_emoji_view(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        return
+    key = callback.data.split(":")[1]
+    meta = BUTTON_METADATA.get(key, {"title": key, "icon": "🔘"})
+    cur_id = await get_button_custom_emoji(key)
+    
+    cur_display = f'<tg-emoji emoji-id="{cur_id}">{meta["icon"]}</tg-emoji> <code>{cur_id}</code>' if cur_id else "⚠️ <b>Not Set (স্বাভাবিক টেক্সট)</b>"
+
+    text = (
+        f"⭐ <b>{meta['title']}</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"📌 <b>বাটন সিস্টেম কি (Key):</b> <code>{key}</code>\n"
+        f"💎 <b>বর্তমান প্রিমিয়াম ইমোজি:</b> {cur_display}\n\n"
+        "👉 <i>নতুন প্রিমিয়াম অ্যানিমেটেড ইমোজি যুক্ত করতে নিচের 'নতুন ইমোজি সেট' বাটনে চাপ দিন।</i>"
+    )
+    from bot.templates import safe_edit_message
+    await safe_edit_message(
+        callback.message,
+        text,
+        reply_markup=build_button_emoji_action_keyboard(key, has_custom_id=bool(cur_id)),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("btn_emoji_edit:"))
+async def cb_btn_emoji_edit(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        return
+    key = callback.data.split(":")[1]
+    meta = BUTTON_METADATA.get(key, {"title": key, "icon": "🔘"})
+    await state.set_state(AdminStates.edit_button_emoji)
+    await state.update_data(editing_btn_key=key)
+
+    text = (
+        f"✏️ <b>[{meta['title']}] বাটনে প্রিমিয়াম ইমোজি সেট</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "👉 <b>আপনার Telegram Premium কিবোর্ড থেকে:</b> সরাসরি যেকোনো <b>Animated Custom Emoji</b> এখানে লিখে সেন্ড করুন!\n"
+        "👉 <b>অথবা:</b> ইমোজির সংখ্যা আইডি (যেমন <code>6235252066554484059</code>) লিখে সেন্ড করুন।\n\n"
+        "<i>(বাতিল করতে চাইলে /cancel বা /admin লিখুন)</i>"
+    )
+    from bot.templates import safe_edit_message
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    await safe_edit_message(
+        callback.message,
+        text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Cancel / বাতিল", callback_data=f"btn_emoji_view:{key}")]
+        ]),
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("btn_emoji_remove:"))
+async def cb_btn_emoji_remove(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        return
+    key = callback.data.split(":")[1]
+    await reset_button_custom_emoji(key)
+    await callback.answer("✅ কাস্টম ইমোজি রিমুভ করে ডিফল্টে ফিরিয়ে নেওয়া হয়েছে!", show_alert=True)
+    meta = BUTTON_METADATA.get(key, {"title": key, "icon": "🔘"})
+    cur_id = await get_button_custom_emoji(key)
+    cur_display = f'<tg-emoji emoji-id="{cur_id}">{meta["icon"]}</tg-emoji> <code>{cur_id}</code>' if cur_id else "⚠️ <b>Not Set (স্বাভাবিক টেক্সট)</b>"
+    text = (
+        f"⭐ <b>{meta['title']}</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"📌 <b>বাটন সিস্টেম কি (Key):</b> <code>{key}</code>\n"
+        f"💎 <b>বর্তমান প্রিমিয়াম ইমোজি:</b> {cur_display}\n\n"
+        "👉 <i>নতুন প্রিমিয়াম অ্যানিমেটেড ইমোজি যুক্ত করতে নিচের 'নতুন ইমোজি সেট' বাটনে চাপ দিন।</i>"
+    )
+    from bot.templates import safe_edit_message
+    await safe_edit_message(
+        callback.message,
+        text,
+        reply_markup=build_button_emoji_action_keyboard(key, has_custom_id=bool(cur_id)),
+        parse_mode="HTML"
+    )
+
+@router.message(AdminStates.edit_button_emoji)
+async def process_btn_emoji_input(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        await state.clear()
+        return
+
+    raw_text = (message.text or message.caption or "").strip()
+    if raw_text in ("/cancel", "/admin", "/start"):
+        await state.clear()
+        await show_admin_panel(message, is_callback=False, user_id=message.from_user.id)
+        return
+
+    data = await state.get_data()
+    btn_key = data.get("editing_btn_key")
+    if not btn_key:
+        await state.clear()
+        await show_admin_panel(message, is_callback=False, user_id=message.from_user.id)
+        return
+
+    meta = BUTTON_METADATA.get(btn_key, {"title": btn_key, "icon": "🔘"})
+
+    import re
+    custom_emoji_id = None
+
+    # 1. Check message entities for Telegram Premium custom emoji
+    for entity in (message.entities or []):
+        if entity.type == "custom_emoji" and entity.custom_emoji_id:
+            custom_emoji_id = str(entity.custom_emoji_id)
+            break
+
+    # 2. Check HTML text for <tg-emoji> tags
+    if not custom_emoji_id and message.html_text:
+        m = re.search(r'<tg-emoji\b[^>]*(?:emoji-id|id)="([0-9]+)"[^>]*>', message.html_text, re.IGNORECASE)
+        if m:
+            custom_emoji_id = m.group(1)
+
+    # 3. Check for raw numeric Telegram Premium Emoji ID (15-22 digits)
+    if not custom_emoji_id:
+        m = re.search(r'\b(\d{15,22})\b', raw_text)
+        if m:
+            custom_emoji_id = m.group(1)
+
+    if not custom_emoji_id:
+        await message.answer(
+            "⚠️ <b>কোনো টেলিগ্রাম প্রিমিয়াম অ্যানিমেটেড ইমোজি বা বৈধ আইডি পাওয়া যায়নি!</b>\n\n"
+            "অনুগ্রহ করে আপনার <b>Telegram Premium</b> অ্যাকাউন্ট থেকে সরাসরি একটি অ্যানিমেটেড ইমোজি সেন্ড করুন অথবা সঠিক সংখ্যা আইডি দিন।\n"
+            "<i>(বাতিল করতে /cancel লিখুন)</i>",
+            parse_mode="HTML"
+        )
+        return
+
+    # Save to database and update cache
+    await set_button_custom_emoji(btn_key, custom_emoji_id)
+    await state.clear()
+
+    confirm_text = (
+        "✅ <b>সফলভাবে প্রিমিয়াম ইমোজি আপডেট হয়েছে!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"🔘 <b>বাটন:</b> {meta['title']}\n"
+        f"🆔 <b>Custom Emoji ID:</b> <code>{custom_emoji_id}</code>\n"
+        f"✨ <b>লাইভ প্রিভিউ:</b> <tg-emoji emoji-id=\"{custom_emoji_id}\">{meta['icon']}</tg-emoji>\n\n"
+        "⚡ <i>বটের লাইভ কিবোর্ডে তাৎক্ষণিকভাবে প্রিমিয়াম ইমোজি সক্রিয় হয়ে গেছে এবং টেক্সট থেকে অপ্রয়োজনীয় ডুপ্লিকেট স্বাভাবিক ইমোজি স্বয়ংক্রিয়ভাবে মুছে দেওয়া হয়েছে!</i>"
+    )
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⭐ বাটন ইমোজি তালিকায় ফিরুন", callback_data="admin_manage_btn_emojis")],
+        [InlineKeyboardButton(text="👑 এডমিন প্যানেল", callback_data="menu_admin")]
+    ])
+    await message.answer(confirm_text, reply_markup=kb, parse_mode="HTML")
 
 # --- Template & Premium Emoji Manager ---
 
