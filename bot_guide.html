@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<title>Telegram Viral Poll & Giveaway Bot - সম্পূর্ণ ইউজার ও ওয়ার্কফ্লো গাইড</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Inter:wght@400;600;700;800&display=swap');
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm 14mm;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Inter', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1e293b;
+    background: #ffffff;
+    line-height: 1.5;
+    font-size: 13px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0284c7 100%);
+    color: #ffffff;
+    padding: 24px 28px;
+    border-radius: 12px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  }
+
+  .header h1 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .header p {
+    font-size: 13px;
+    color: #cbd5e1;
+    font-weight: 400;
+  }
+
+  .header .badge {
+    display: inline-block;
+    background: rgba(56, 189, 248, 0.2);
+    border: 1px solid #38bdf8;
+    color: #38bdf8;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 10px;
+  }
+
+  .diagram-section {
+    text-align: center;
+    margin-bottom: 22px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    background: #090d16;
+  }
+
+  .diagram-img {
+    width: 100%;
+    max-height: 380px;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+
+  .diagram-caption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 600;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .card {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: #f8fafc;
+  }
+
+  .card.highlight {
+    border-color: #38bdf8;
+    background: #f0f9ff;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .step-num {
+    background: #0284c7;
+    color: #ffffff;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .card-desc {
+    font-size: 12px;
+    color: #475569;
+    margin-bottom: 8px;
+  }
+
+  .code-box {
+    background: #0f172a;
+    color: #38bdf8;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: 'Consolas', monospace;
+    font-size: 11px;
+    white-space: pre-wrap;
+    margin-top: 4px;
+    border-left: 3px solid #38bdf8;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  .feature-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 12px;
+  }
+
+  .feature-table th, .feature-table td {
+    padding: 8px 10px;
+    border: 1px solid #cbd5e1;
+    text-align: left;
+  }
+
+  .feature-table th {
+    background: #0f172a;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .feature-table tr:nth-child(even) {
+    background: #f8fafc;
+  }
+
+  .footer {
+    margin-top: 18px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #64748b;
+  }
+</style>
+</head>
+<body>
+
+  <!-- PAGE 1: HEADER & WORKFLOW INFOGRAPHIC -->
+  <div class="header">
+    <h1>🚀 Telegram Viral Poll & Giveaway Bot</h1>
+    <p>সম্পূর্ণ কাজের প্রবাহ, সেটআপ ও পরিচালন ম্যানুয়াল (Visual Architecture & Operational Manual)</p>
+    <div class="badge">Official Engine Guide v3.5 • Pro Pool Making (@ProPoolMaking_bot)</div>
+  </div>
+
+  <div class="diagram-section">
+    <img src="bot_workflow_diagram.jpg" alt="Bot Workflow Diagram" class="diagram-img">
+    <div class="diagram-caption">চিত্র ১: বটের সম্পূর্ণ কাজের প্রবাহ (Add Admin ➔ Create Wizard ➔ Channel Poll ➔ Force-Sub Gate ➔ Leaderboard & Winner)</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-header">
+        <span class="step-num">১</span>
+        <span class="card-title">চ্যানেলে বট এডমিন যুক্ত করা</span>
+      </div>
+      <p class="card-desc">বটটিকে আপনার টেলিগ্রাম চ্যানেলে <b>Administrator</b> হিসেবে যুক্ত করুন।</p>
+      <div class="code-box">• পারমিশন: Post Messages, Edit Messages, Delete Messages
+• সুবিধা: বটের ১-ক্লিক বাটন থেকেই চ্যানেল সিলেক্ট করা যায়</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="step-num">২</span>
+        <span class="card-title">পোল তৈরির উইজার্ড (/newpoll)</span>
+      </div>
+      <p class="card-desc">বটে <code>/newpoll</code> দিলে ধাপে ধাপে টাইটেল ও অপশন চাইবে।</p>
+      <div class="code-box">টাইটেল: 🎉 Eid Mega Giveaway 2026!
+প্রার্থী (প্রতি লাইনে ১ জন):
+Candidate 1
+Candidate 2
+Candidate 3</div>
+    </div>
+  </div>
+
+  <!-- PAGE 2: CORE MECHANISMS & SECURITY -->
+  <div class="page-break"></div>
+
+  <div class="header" style="padding: 16px 22px; margin-bottom: 14px;">
+    <h1 style="font-size: 18px;">⚙️ বটের অভ্যন্তরীণ নিরাপত্তা ও ভাইরাল গ্রোথ মেকানিজম</h1>
+    <p>ভোটিং প্রসেস, ফোর্স-সাবস্ক্রিপশন এবং ডায়নামিক উইনার ঘোষণা কীভাবে কাজ করে</p>
+  </div>
+
+  <div class="grid">
+    <div class="card highlight">
+      <div class="card-header">
+        <span class="step-num">৩</span>
+        <span class="card-title">ফোর্স-সাবস্ক্রিপশন (Viral Force-Sub)</span>
+      </div>
+      <p class="card-desc">ভোটার চ্যানেলে জয়েন না থাকলে ভোট গ্রহণ হবে না। টেলিগ্রামেই সরাসরি পপআপ অ্যালার্ট আসবে।</p>
+      <div class="code-box">⚠️ "Please join the channel to cast your vote!"
+👉 ফলাফল: প্রতিটি ভোটের জন্য আপনার চ্যানেলে অর্গানিক রিয়েল মেম্বার বাড়ে।</div>
+    </div>
+
+    <div class="card highlight">
+      <div class="card-header">
+        <span class="step-num">৪</span>
+        <span class="card-title">লাইভ লিডারবোর্ড ও ডাইনামিক আইকন</span>
+      </div>
+      <p class="card-desc">ভোটের সংখ্যার ওপর ভিত্তি করে বাটনের আইকন স্বয়ংক্রিয়ভাবে পরিবর্তিত হয়।</p>
+      <div class="code-box">👑 ১ম স্থান (Dynamic Winner Leader)
+🥈 ২য় স্থান (Silver Runner-up)
+🥉 ৩য় স্থান (Bronze Runner-up)
+🔥 সক্রিয় ট্রেন্ডিং অপশনস</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-header">
+        <span class="step-num">৫</span>
+        <span class="card-title">অটো-টাইমার ও উইনার ঘোষণা</span>
+      </div>
+      <p class="card-desc">নির্ধারিত সময় (যেমন ১ ঘণ্টা বা ২৪ ঘণ্টা) শেষ হলে চ্যানেল মেসেজ লক হয়ে যায় এবং ক্রিয়েটরকে উইনার কার্ড পাঠানো হয়।</p>
+      <div class="code-box">🏆 ফলাফল:
+🥇 1st: Candidate 1 (76 votes • 42%)
+🥈 2nd: Candidate 2 (50 votes • 23%)
+🎁 প্রাইজ ক্লেইম কন্টাক্ট: @Agent_47VIP</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="step-num">৬</span>
+        <span class="card-title">ক্লিন UI ও অন-ডিমান্ড কিবোর্ড</span>
+      </div>
+      <p class="card-desc">স্ক্রিনের অতিরিক্ত বাটন ডুপ্লিকেশন দূর করা হয়েছে। দরকার হলে কিবোর্ড ওপেন ও বন্ধ করা যায়।</p>
+      <div class="code-box">📱 বটম কিবোর্ড (কুইক মেনু) ➔ কিবোর্ড ওপেন
+❌ কিবোর্ড লুকান ➔ সাথে সাথে স্ক্রিন পরিষ্কার</div>
+    </div>
+  </div>
+
+  <h3 style="margin-top: 14px; margin-bottom: 8px; font-size: 14px; font-weight: 700; color: #0f172a;">📋 বটের প্রধান কমান্ড তালিকা (Quick Commands)</h3>
+  <table class="feature-table">
+    <thead>
+      <tr>
+        <th style="width: 25%;">কমান্ড</th>
+        <th style="width: 45%;">কাজ</th>
+        <th style="width: 30%;">ব্যবহারকারী</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>/start</code></td>
+        <td>মূল ইনলাইন ড্যাশবোর্ড ও মেনু চালু করা</td>
+        <td>সকল ইউজার</td>
+      </tr>
+      <tr>
+        <td><code>/newpoll</code></td>
+        <td>নতুন পোল বা গিভঅ্যাওয়ে তৈরি শুরু করা</td>
+        <td>সকল ইউজার</td>
+      </tr>
+      <tr>
+        <td><code>/mypolls</code></td>
+        <td>নিজের তৈরি করা সব সক্রিয় ও বন্ধ পোল দেখা</td>
+        <td>পোল ক্রিয়েটর</td>
+      </tr>
+      <tr>
+        <td><code>/channels</code></td>
+        <td>যুক্ত থাকা চ্যানেলগুলোর তালিকা ও পারমিশন দেখা</td>
+        <td>চ্যানেল ওনার</td>
+      </tr>
+      <tr>
+        <td><code>/admin</code></td>
+        <td>গ্লোবাল পরিসংখ্যান, ব্রডকাস্ট ও স্পনসর সেটিংস</td>
+        <td>সুপার এডমিন (8370293945)</td>
+      </tr>
+      <tr>
+        <td><code>/cancel</code></td>
+        <td>চলমান যেকোনো পোল তৈরির প্রক্রিয়া বাতিল করা</td>
+        <td>সকল ইউজার</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <span>🤖 Bot: @ProPoolMaking_bot</span>
+    <span>👑 Admin ID: 8370293945</span>
+    <span>📄 Generated for AN0N • Automated Engine Doc</span>
+  </div>
+
+</body>
+</html>

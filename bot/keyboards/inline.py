@@ -355,6 +355,9 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
             [
                 make_custom_button(text="Language", callback_data="menu_change_lang", custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID),
                 make_custom_button(text="Help & Support", callback_data="menu_help", custom_emoji_id=HELP_CUSTOM_EMOJI_ID)
+            ],
+            [
+                make_custom_button(text="📱 Bottom Keyboard (Quick Menu)", callback_data="toggle_bottom_menu")
             ]
         ]
         keyboard = [row for row in keyboard if row]
@@ -372,6 +375,9 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
             [
                 make_custom_button(text="भाषा बदलें", callback_data="menu_change_lang", custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID),
                 make_custom_button(text="सहायता एवं सपोर्ट", callback_data="menu_help", custom_emoji_id=HELP_CUSTOM_EMOJI_ID)
+            ],
+            [
+                make_custom_button(text="📱 बॉटम कीबोर्ड (क्विक मेनू)", callback_data="toggle_bottom_menu")
             ]
         ]
         keyboard = [row for row in keyboard if row]
@@ -389,6 +395,9 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
             [
                 make_custom_button(text="تغيير اللغة", callback_data="menu_change_lang", custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID),
                 make_custom_button(text="المساعدة والدعم", callback_data="menu_help", custom_emoji_id=HELP_CUSTOM_EMOJI_ID)
+            ],
+            [
+                make_custom_button(text="📱 لوحة المفاتيح السفلية (قائمة سريعة)", callback_data="toggle_bottom_menu")
             ]
         ]
         keyboard = [row for row in keyboard if row]
@@ -406,6 +415,9 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
             [
                 make_custom_button(text="Изменить язык", callback_data="menu_change_lang", custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID),
                 make_custom_button(text="Помощь и поддержка", callback_data="menu_help", custom_emoji_id=HELP_CUSTOM_EMOJI_ID)
+            ],
+            [
+                make_custom_button(text="📱 Нижняя клавиатура (быстрое меню)", callback_data="toggle_bottom_menu")
             ]
         ]
         keyboard = [row for row in keyboard if row]
@@ -423,6 +435,9 @@ def build_main_menu(is_admin: bool = False, bot_username: str = "", lang: str = 
             [
                 make_custom_button(text="ভাষা পরিবর্তন", callback_data="menu_change_lang", custom_emoji_id=LANGUAGE_CUSTOM_EMOJI_ID),
                 make_custom_button(text="ব্যবহারের নিয়ম ও সাপোর্ট", callback_data="menu_help", custom_emoji_id=HELP_CUSTOM_EMOJI_ID)
+            ],
+            [
+                make_custom_button(text="📱 বটম কিবোর্ড (কুইক মেনু)", callback_data="toggle_bottom_menu")
             ]
         ]
         keyboard = [row for row in keyboard if row]

@@ -79,5 +79,36 @@ class TestStartButtonFeature(unittest.IsolatedAsyncioTestCase):
         self.assertIn("🏠 Start", START_BUTTON_TEXTS)
         self.assertIn("🏠 মূল মেনু", START_BUTTON_TEXTS)
 
+    def test_persistent_menu_has_hide_button_all_languages(self):
+        """Verify that build_persistent_menu includes the hide button in all languages."""
+        from bot.handlers.start import HIDE_KEYBOARD_TEXTS
+        for lang, expected_token in [("bn", "লুকান"), ("en", "Hide"), ("hi", "छिपाएं"), ("ar", "إخفاء"), ("ru", "Скрыть")]:
+            kb = build_persistent_menu(lang=lang, is_admin=False)
+            last_row = kb.keyboard[-1]
+            hide_btn = last_row[0].text
+            self.assertIn(expected_token, hide_btn)
+            self.assertIn(hide_btn, HIDE_KEYBOARD_TEXTS)
+
+    def test_main_menu_has_toggle_bottom_menu_button(self):
+        """Verify that build_main_menu contains toggle_bottom_menu button in all languages."""
+        from bot.keyboards.inline import build_main_menu
+        for lang in ["bn", "en", "hi", "ar", "ru"]:
+            kb = build_main_menu(is_admin=False, bot_username="propollbot", lang=lang)
+            callbacks = [btn.callback_data for row in kb.inline_keyboard for btn in row if btn.callback_data]
+            self.assertIn("toggle_bottom_menu", callbacks)
+
+    async def test_reply_btn_hide_keyboard_removes_markup(self):
+        """Verify that reply_btn_hide_keyboard sends ReplyKeyboardRemove."""
+        from bot.handlers.start import reply_btn_hide_keyboard
+        from aiogram.types import ReplyKeyboardRemove
+        mock_msg = MagicMock()
+        mock_msg.from_user.id = 88889999
+        mock_msg.answer = AsyncMock()
+        await reply_btn_hide_keyboard(mock_msg)
+        mock_msg.answer.assert_awaited_once()
+        _, kwargs = mock_msg.answer.call_args
+        self.assertIsInstance(kwargs.get("reply_markup"), ReplyKeyboardRemove)
+
 if __name__ == "__main__":
     unittest.main()
+

@@ -54,7 +54,7 @@ def check_telegram_api():
     try:
         url = f"https://api.telegram.org/bot{bot_token}/getMe"
         req = urllib.request.Request(url, headers={"User-Agent": "HealthCheck/1.0"})
-        with urllib.request.urlopen(req, timeout=10) as response:
+        with urllib.request.urlopen(req, timeout=25) as response:
             data = json.loads(response.read().decode())
             if data.get("ok"):
                 res = data.get("result", {})

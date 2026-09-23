@@ -2,7 +2,7 @@ import html
 import re
 from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, CallbackQuery, ChatMemberUpdated, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, ChatMemberUpdated, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from bot.config import ADMIN_IDS
@@ -86,17 +86,6 @@ async def cmd_start(message: Message, state: FSMContext = None):
         reply_markup=build_main_menu(is_admin, bot_info.username, lang),
         parse_mode="HTML"
     )
-    menu_confirm = (
-        "✅ Bottom keyboard is active below:" if lang == "en" else
-        "✅ मेनू सक्रिय है। नीचे स्थायी कीबोर्ड तैयार है:" if lang == "hi" else
-        "✅ لوحة المفاتيح الدائمة جاهزة أدناه:" if lang == "ar" else
-        "✅ Меню обновлено. Постоянная клавиатура внизу:" if lang == "ru" else
-        "✅ নিচের স্থায়ী কিবোর্ড বাটন সবসময় রেডি:"
-    )
-    await message.answer(
-        menu_confirm,
-        reply_markup=build_persistent_menu(lang, is_admin)
-    )
 
 @router.callback_query(F.data.startswith("set_lang:"))
 async def cb_set_language(callback: CallbackQuery):
@@ -118,25 +107,16 @@ async def cb_set_language(callback: CallbackQuery):
     )
     if lang == "en":
         toast = "Language set to English 🇬🇧"
-        menu_confirm = "✅ Menu updated. Bottom keyboard is always ready below:"
     elif lang == "hi":
         toast = "भाषा हिन्दी चुनी गई 🇮🇳"
-        menu_confirm = "✅ मेनू अपडेट हो गया। नीचे हमेशा सक्रिय कीबोर्ड उपलब्ध है:"
     elif lang == "ar":
         toast = "تم تعيين اللغة إلى العربية 🇸🇦"
-        menu_confirm = "✅ تم تحديث القائمة. لوحة المفاتيح الدائمة متاحة أدناه:"
     elif lang == "ru":
         toast = "Язык установлен на Русский 🇷🇺"
-        menu_confirm = "✅ Меню обновлено. Постоянная клавиатура прикреплена ниже:"
     else:
         toast = "ভাষা বাংলা নির্ধারণ করা হয়েছে 🇧🇩"
-        menu_confirm = "✅ মেনু আপডেট হয়েছে। নিচের স্থায়ী কিবোর্ড বাটন সবসময় রেডি:"
 
     await callback.answer(toast)
-    await callback.message.answer(
-        menu_confirm,
-        reply_markup=build_persistent_menu(lang, is_admin)
-    )
 
 @router.callback_query(F.data == "menu_change_lang")
 async def cb_change_language_menu(callback: CallbackQuery):
@@ -230,6 +210,28 @@ async def cb_back_main(callback: CallbackQuery, state: FSMContext = None):
         parse_mode="HTML"
     )
     await callback.answer()
+
+@router.callback_query(F.data == "toggle_bottom_menu")
+async def cb_toggle_bottom_menu(callback: CallbackQuery):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    user_id = callback.from_user.id
+    lang = await get_user_language(user_id)
+    is_admin = user_id in ADMIN_IDS
+    prompt = (
+        "⌨️ <b>Bottom Quick Menu opened!</b>\n<i>Tap '❌ Hide Keyboard' below anytime to close it.</i>" if lang == "en" else
+        "⌨️ <b>बॉटम कीबोर्ड खुल गया!</b>\n<i>बंद करने के लिए नीचे '❌ कीबोर्ड छिपाएं' दबाएं।</i>" if lang == "hi" else
+        "⌨️ <b>تم فتح لوحة المفاتيح!</b>\n<i>انقر على '❌ إخفاء لوحة المفاتيح' لإغلاقها.</i>" if lang == "ar" else
+        "⌨️ <b>Нижняя клавиатура открыта!</b>\n<i>Нажмите '❌ Скрыть клавиатуру', чтобы скрыть её.</i>" if lang == "ru" else
+        "⌨️ <b>কুইক বটম কিবোর্ড চালু করা হয়েছে!</b>\n<i>লুকাতে চাইলে নিচের '❌ কিবোর্ড লুকান' বাটনে চাপুন।</i>"
+    )
+    await callback.message.answer(
+        prompt,
+        reply_markup=build_persistent_menu(lang, is_admin),
+        parse_mode="HTML"
+    )
 
 # --- Automatic Channel Network Tracking & Admin Alert ---
 @router.my_chat_member()
@@ -541,6 +543,26 @@ async def reply_btn_admin(message: Message):
     from bot.handlers.admin import show_admin_panel, is_admin
     if is_admin(message.from_user.id):
         await show_admin_panel(message, is_callback=False, user_id=message.from_user.id)
+
+HIDE_KEYBOARD_TEXTS = [
+    "❌ Hide Keyboard", "❌ কিবোর্ড লুকান", "❌ कीबोर्ड छिपाएं",
+    "❌ إخفاء لوحة المفاتيح", "❌ Скрыть клавиатуру",
+    "Hide Keyboard", "কিবোর্ড লুকান", "कीबोर्ड छिपाएं", "Скрыть клавиатуру"
+]
+
+@router.message(F.text.in_(HIDE_KEYBOARD_TEXTS))
+async def reply_btn_hide_keyboard(message: Message, state: FSMContext = None):
+    if state:
+        await state.clear()
+    lang = await get_user_language(message.from_user.id)
+    msg = (
+        "✅ <b>Bottom keyboard hidden.</b>\n<i>You can re-open it anytime from the menu.</i>" if lang == "en" else
+        "✅ <b>कीबोर्ड छिपा दिया गया है।</b>\n<i>आप मेनू से कभी भी इसे दोबारा खोल सकते हैं।</i>" if lang == "hi" else
+        "✅ <b>تم إخفاء لوحة المفاتيح.</b>\n<i>يمكنك إعادة فتحها من القائمة في أي وقت.</i>" if lang == "ar" else
+        "✅ <b>Клавиатура скрыта.</b>\n<i>Вы можете снова открыть её из меню в любое время.</i>" if lang == "ru" else
+        "✅ <b>বটম কিবোর্ড লুকানো হয়েছে।</b>\n<i>প্রয়োজনে ইনলাইন মেনু থেকে আবার খুলতে পারবেন।</i>"
+    )
+    await message.answer(msg, reply_markup=ReplyKeyboardRemove(), parse_mode="HTML")
 
 # --- User-Facing Poll Button Icon Style Handlers (100% Free & Open For All) ---
 

@@ -196,6 +196,13 @@ async def check_command_breakout(message: Message, state: FSMContext) -> bool:
             await cmd_admin(message)
             return True
 
+    from bot.handlers.start import HIDE_KEYBOARD_TEXTS
+    if raw_text in HIDE_KEYBOARD_TEXTS:
+        await state.clear()
+        from bot.handlers.start import reply_btn_hide_keyboard
+        await reply_btn_hide_keyboard(message, state)
+        return True
+
     return False
 
 async def publish_single_part(

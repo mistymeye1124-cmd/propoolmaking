@@ -26,6 +26,7 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
         btn_icons = "Button Icons"
         btn_lang = "Language"
         btn_help = "Help & Support"
+        btn_hide = "❌ Hide Keyboard"
     elif lang == "hi":
         btn_start = "Start / मुख्य मेनू"
         btn_create = "नया पोल बनाएं"
@@ -36,6 +37,7 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
         btn_icons = "बटन आइकन"
         btn_lang = "भाषा"
         btn_help = "सहायता एवं सपोर्ट"
+        btn_hide = "❌ कीबोर्ड छिपाएं"
     elif lang == "ar":
         btn_start = "Start / القائمة الرئيسية"
         btn_create = "إنشاء استطلاع جديد"
@@ -46,6 +48,7 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
         btn_icons = "نمط الأيقونات"
         btn_lang = "اللغة"
         btn_help = "المساعدة والدعم"
+        btn_hide = "❌ إخفاء لوحة المفاتيح"
     elif lang == "ru":
         btn_start = "Start / Главное меню"
         btn_create = "Создать новый опрос"
@@ -56,6 +59,7 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
         btn_icons = "Иконки кнопок"
         btn_lang = "Язык"
         btn_help = "Помощь и поддержка"
+        btn_hide = "❌ Скрыть клавиатуру"
     else:
         btn_start = "Start / মূল মেনু"
         btn_create = "নতুন পোল তৈরি করুন"
@@ -66,6 +70,7 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
         btn_icons = "বাটন আইকন স্টাইল"
         btn_lang = "ভাষা পরিবর্তন"
         btn_help = "ব্যবহারের নিয়ম ও সাপোর্ট"
+        btn_hide = "❌ কিবোর্ড লুকান"
 
     keyboard = [
         [KeyboardButton(text=btn_start, icon_custom_emoji_id=START_MENU_CUSTOM_EMOJI_ID)],
@@ -89,6 +94,8 @@ def build_persistent_menu(lang: str = "bn", is_admin: bool = False) -> ReplyKeyb
     if is_admin:
         admin_text = "👑 Admin Panel" if lang == "en" else "👑 এডমিন প্যানেল"
         keyboard.append([KeyboardButton(text=admin_text)])
+
+    keyboard.append([KeyboardButton(text=btn_hide)])
 
     return ReplyKeyboardMarkup(
         keyboard=keyboard,
